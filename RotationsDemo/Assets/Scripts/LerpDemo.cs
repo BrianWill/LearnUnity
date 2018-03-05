@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿using System.Collections;
+using UnityEngine;
 
 
 public class LerpDemo : MonoBehaviour {
@@ -23,20 +24,36 @@ public class LerpDemo : MonoBehaviour {
         capsule3.transform.localRotation = start;
 
         (end * Quaternion.Inverse(start)).ToAngleAxis(out endAngle, out axis);
+        // quaternions only represent rotations in range +180 to -180
+        if (endAngle > 180) {
+            endAngle -= 360;
+        }
     }
 
+
+    private float resume = 0;
+    private bool waiting = false;
+
     void Update() {
-        if (Input.GetKeyDown(KeyCode.Space)) {
-            Start();   // reset
+        if (waiting) {
+            if (Time.time > resume) {
+                Start();
+                waiting = false;
+            } else {
+                return;
+            }
         }
 
+        const float wait = 1.3f;
         const float rate = 0.2f;
         percent += rate * Time.deltaTime;
         if (percent > 1) {
             percent = 1;
+            resume = Time.time + wait;
+            waiting = true;
         }
 
-        // gives same smoothness of slerp, but for larger movements, it may go the opposite way
+        // we can achieve same smoothness of slerp w/angle-axis and no quaternions (but less efficient?)
         capsule.transform.localRotation = Quaternion.AngleAxis(endAngle * percent, axis) * start;
 
         capsule2.transform.localRotation = Quaternion.Slerp(start, end, percent);
@@ -45,6 +62,5 @@ public class LerpDemo : MonoBehaviour {
         capsule3.transform.localRotation = Quaternion.Lerp(start, end, percent);
     }
 }
-
 
 

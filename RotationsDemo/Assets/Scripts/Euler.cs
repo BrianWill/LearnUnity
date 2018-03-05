@@ -2,10 +2,24 @@
 using System;
 
 public class Euler : MonoBehaviour {
-    private RotationOrder order = RotationOrder.XYZ;
+
+    public Transform capsule;
+    private RotationOrder order = RotationOrder.ZXY;
     private bool intrinsic = false;
     private float x = 0, y = 0, z = 0;
+    private GUIStyle style, style2;
 
+    private void Awake() {
+        style = new GUIStyle();
+        style.fontSize = 20;
+        style.normal.textColor = Color.white;
+
+        style2 = new GUIStyle();
+        style2.fontSize = 14;
+        style2.normal.textColor = Color.gray;
+    }
+
+    // Update is called once per frame
     void Update() {
         const float rate = 60;
         float delta = rate * Time.deltaTime;
@@ -28,53 +42,6 @@ public class Euler : MonoBehaviour {
         } else if (Input.GetKey(KeyCode.C)) {
             z = 0;
         }
-    }
-
-    private void OnGUI() {
-
-        string X = x.ToString(), Y = y.ToString(), Z = z.ToString();
-
-        GUI.Label(new Rect(5, 10, 20, 40), "X:");
-        X = GUI.TextField(new Rect(25, 10, 100, 20), X, 10);
-
-        GUI.Label(new Rect(5, 30, 20, 40), "Y:");
-        Y = GUI.TextField(new Rect(25, 30, 100, 20), Y, 10);
-
-        GUI.Label(new Rect(5, 50, 20, 40), "Z:");
-        Z = GUI.TextField(new Rect(25, 50, 100, 20), Z, 10);
-
-
-        GUI.Label(new Rect(5, 80, 200, 40), "Rotation order: " + order);
-        if (GUI.Button(new Rect(5, 100, 40, 20), "XYZ")) {
-            order = RotationOrder.XYZ;
-        }
-        if (GUI.Button(new Rect(5, 125, 40, 20), "XZY")) {
-            order = RotationOrder.XZY;
-        }
-        if (GUI.Button(new Rect(5, 150, 40, 20), "YXZ")) {
-            order = RotationOrder.YXZ;
-        }
-        if (GUI.Button(new Rect(5, 175, 40, 20), "YZX")) {
-            order = RotationOrder.YZX;
-        }
-        if (GUI.Button(new Rect(5, 200, 40, 20), "ZXY")) {
-            order = RotationOrder.ZXY;
-        }
-        if (GUI.Button(new Rect(5, 225, 40, 20), "ZYX")) {
-            order = RotationOrder.ZYX;
-        }
-
-        intrinsic = GUI.Toggle(new Rect(5, 250, 100, 20), intrinsic, " intrinsic");
-
-        try {
-            x = X.Trim().Equals("") ? 0 : float.Parse(X);
-            y = Y.Trim().Equals("") ? 0 : float.Parse(Y);
-            z = Z.Trim().Equals("") ? 0 : float.Parse(Z);
-        } catch (FormatException ex) {
-            Debug.Log("X, Y, or Z string must be a float" + ex);
-        } catch (OverflowException ex) {
-            Debug.Log("X, Y, or Z value is too large or small" + ex);
-        }
 
         Quaternion qx = Quaternion.Euler(x, 0, 0),
             qy = Quaternion.Euler(0, y, 0),
@@ -82,34 +49,62 @@ public class Euler : MonoBehaviour {
 
         switch (order) {
             case RotationOrder.XYZ:
-                transform.localRotation = intrinsic ? qx * qy * qz : qz * qy * qx;
+                capsule.localRotation = intrinsic ? qx * qy * qz : qz * qy * qx;
                 break;
             case RotationOrder.XZY:
-                transform.localRotation = intrinsic ? qx * qz * qy : qy * qz * qx;
+                capsule.localRotation = intrinsic ? qx * qz * qy : qy * qz * qx;
                 break;
             case RotationOrder.YXZ:
-                transform.localRotation = intrinsic ? qy * qx * qz : qz * qx * qy;
+                capsule.localRotation = intrinsic ? qy * qx * qz : qz * qx * qy;
                 break;
             case RotationOrder.YZX:
-                transform.localRotation = intrinsic ? qy * qz * qx : qx * qz * qy;
+                capsule.localRotation = intrinsic ? qy * qz * qx : qx * qz * qy;
                 break;
             case RotationOrder.ZXY:
-                transform.localRotation = intrinsic ? qz * qx * qy : Quaternion.Euler(x, y, z);
+                capsule.localRotation = intrinsic ? qz * qx * qy : Quaternion.Euler(x, y, z);
                 break;
             case RotationOrder.ZYX:
-                transform.localRotation = intrinsic ? qz * qy * qx : qx * qy * qz;
+                capsule.localRotation = intrinsic ? qz * qy * qx : qx * qy * qz;
                 break;
         }
+    }
+    
 
-        //Quaternion q = transform.localRotation;
-        //string ijkw = string.Format("Quaternion: \nX: {0:0.000}\n Y: {1:0.000}\n Z: {2:0.000}\n W: {3:0.000}\n",
-        //    q.x, q.y, q.z, q.w
-        //);
-        //GUIStyle style = new GUIStyle(GUI.skin.box);
-        //style.fontSize = 18;
-        //GUI.Box(new Rect(5, 280, 120, 115), ijkw, style);
+    private void OnGUI() {
+
+        int height = 35;
+        GUI.Label(new Rect(5, height, 200, 40), string.Format("X rotation:     {0:0.000}", x), style);
+        GUI.Label(new Rect(5, height += 25, 200, 40), string.Format("Y rotation:     {0:0.000}", y), style);
+        GUI.Label(new Rect(5, height += 25, 200, 40), string.Format("Z rotation:     {0:0.000}", z), style);
+
+        intrinsic = GUI.Toggle(new Rect(5, height += 45, 100, 20), intrinsic, " intrinsic");
+
+        GUI.Label(new Rect(5, height += 25, 200, 40), "Rotation order: " + order);
+        if (GUI.Button(new Rect(5, height += 25, 40, 20), "XYZ")) {
+            order = RotationOrder.XYZ;
+        }
+        if (GUI.Button(new Rect(5, height += 25, 40, 20), "XZY")) {
+            order = RotationOrder.XZY;
+        }
+        if (GUI.Button(new Rect(5, height += 25, 40, 20), "YXZ")) {
+            order = RotationOrder.YXZ;
+        }
+        if (GUI.Button(new Rect(5, height += 25, 40, 20), "YZX")) {
+            order = RotationOrder.YZX;
+        }
+        if (GUI.Button(new Rect(5, height += 25, 40, 20), "ZXY")) {
+            order = RotationOrder.ZXY;
+        }
+        if (GUI.Button(new Rect(5, height += 25, 40, 20), "ZYX")) {
+            order = RotationOrder.ZYX;
+        }
+
+        GUI.Label(new Rect(5, height += 45, 200, 40), "X axis:   Q  W    (E to reset)", style2);
+        GUI.Label(new Rect(5, height += 25, 200, 40), "Y axis:   A  S    (D to reset)", style2);
+        GUI.Label(new Rect(5, height += 25, 200, 40), "Z axis:   Z  X    (C to reset) ", style2);
     }
 }
+
 
 enum RotationOrder {
     XZY,

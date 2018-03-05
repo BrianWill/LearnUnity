@@ -5,9 +5,6 @@ public class LookRotation : MonoBehaviour {
     public Transform capsule1;
     public Transform capsule2;
 
-    private Quaternion myLook = Quaternion.identity;
-    private Quaternion look = Quaternion.identity;
-
     private void Start() {
         StartCoroutine(RandomLook());
     }
@@ -27,14 +24,10 @@ public class LookRotation : MonoBehaviour {
             b = b.normalized * 5;
             c *= 5;            
 
-            look = Quaternion.LookRotation(a, b);
-            myLook = MyLookRotation(a, b);
+            capsule1.transform.localRotation = Quaternion.LookRotation(a, b);
+            capsule2.transform.localRotation = MyLookRotation(a, b);
 
-            Debug.Log(look == myLook);
-            Debug.Log(string.Format("look: {0:0.000000} {1:0.000000} {2:0.000000} ", look.x, look.y, look.z));
-            Debug.Log(string.Format("myLook: {0:0.000000} {1:0.000000} {2:0.000000} ", myLook.x, myLook.y, myLook.z));
-
-            float time = 3;
+            const float time = 3;
             Debug.DrawLine(Vector3.zero, a, Color.green, time);
             Debug.DrawLine(Vector3.zero, b, Color.cyan, time);
             Debug.DrawLine(Vector3.zero, c, Color.magenta, time);
@@ -44,7 +37,8 @@ public class LookRotation : MonoBehaviour {
 
     private Quaternion MyLookRotation(Vector3 handle, Vector3 up) {
         // Can't use FromToRotation to find pitch and yaw because it may apply spin.
-        // There's more than one way to rotate a single point from position a to b!
+        // There's an infinite number of rotations that gets a single point from position a to b!
+        // (Imagine the vector to that axis and spinning around that axis.)
 
         // handle rotation
         float pitchAngle = Mathf.Rad2Deg * Mathf.Atan2(-handle.y, new Vector2(handle.x, handle.z).magnitude);
@@ -67,15 +61,7 @@ public class LookRotation : MonoBehaviour {
         Quaternion spinRotation = Quaternion.AngleAxis(spinAngle, handle);
 
         return spinRotation * handleRotation;
-    }
-
-    // Update is called once per frame
-    void Update() {
-        capsule1.transform.localRotation = myLook;
-        capsule2.transform.localRotation = look;
-    }
-
-    
+    }    
 }
 
 

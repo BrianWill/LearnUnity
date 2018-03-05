@@ -1,24 +1,34 @@
 ﻿using UnityEngine;
 using System;
 
+
+
 public class AxisAngle : MonoBehaviour {
-    public Transform axis;
+
     public Transform capsule;
-    public Transform sphere;
+    public Transform axis;
+    private Quaternion axisBaseRotation;
 
     private float spin = 0, pitch = 0, orbit = 0;
 
-    private Quaternion axisBaseRotation;
-    private Vector3 sphereBasePosition;
+    private Vector3 handleVector = new Vector3(0, 0, 1);
+    private GUIStyle style;
+    private GUIStyle style2;
 
-    private void Start() {
+    private void Awake() {
+        style = new GUIStyle();
+        style.fontSize = 20;
+        style.normal.textColor = Color.white;
+
+        style2 = new GUIStyle();
+        style2.fontSize = 14;
+        style2.normal.textColor = Color.gray;
+
         axisBaseRotation = axis.localRotation;
-        sphereBasePosition = sphere.localPosition;
     }
 
+    // Update is called once per frame
     void Update() {
-
-
         const float rate = 90;
         float delta = rate * Time.deltaTime;
 
@@ -29,15 +39,15 @@ public class AxisAngle : MonoBehaviour {
         } else if (Input.GetKey(KeyCode.E)) {
             spin = 0;
         } else if (Input.GetKey(KeyCode.S)) {
-            pitch -= delta;
-        } else if (Input.GetKey(KeyCode.A)) {
             pitch += delta;
+        } else if (Input.GetKey(KeyCode.A)) {
+            pitch -= delta;
         } else if (Input.GetKey(KeyCode.D)) {
             pitch = 0;
         } else if (Input.GetKey(KeyCode.X)) {
-            orbit -= delta;
-        } else if (Input.GetKey(KeyCode.Z)) {
             orbit += delta;
+        } else if (Input.GetKey(KeyCode.Z)) {
+            orbit -= delta;
         } else if (Input.GetKey(KeyCode.C)) {
             orbit = 0;
         }
@@ -58,66 +68,27 @@ public class AxisAngle : MonoBehaviour {
 
         pitch = Mathf.Clamp(pitch, -90, 90);
 
+        // extrinsically apply spin, then pitch, then orbit
         Quaternion q = Quaternion.Euler(0, orbit, 0) *
             Quaternion.Euler(pitch, 0, 0) *
-            Quaternion.Euler(0, 0, spin);
+            Quaternion.Euler(0, 0, spin);      
+        
         axis.localRotation = q * axisBaseRotation;
-        Vector3 axisVector = q * new Vector3(0, 0, -1);
-        sphere.localPosition = q * sphereBasePosition;
-
-        capsule.localRotation = Quaternion.AngleAxis(spin, axisVector.normalized);
+        handleVector = q * new Vector3(0, 0, 1);
+        capsule.localRotation = Quaternion.AngleAxis(spin, handleVector.normalized);
     }
 
 
     private void OnGUI() {
+        GUI.Label(new Rect(5, 10, 200, 40), string.Format("Spin:            {0:0.000}", spin), style);
 
-        string spinStr = spin.ToString(),
-            heightStr = pitch.ToString(),
-            orbitStr = orbit.ToString();
+        GUI.Label(new Rect(5, 35, 200, 40), string.Format("Axis X:     {0:0.000}", handleVector.x), style);
+        GUI.Label(new Rect(5, 60, 200, 40), string.Format("Axis Y:     {0:0.000}", handleVector.y), style);
+        GUI.Label(new Rect(5, 85, 200, 40), string.Format("Axis Z:     {0:0.000}", handleVector.z), style);
 
-        GUI.Label(new Rect(5, 210, 55, 40), "Spin:");
-        spinStr = GUI.TextField(new Rect(65, 210, 100, 20), spinStr, 10);
-
-        GUI.Label(new Rect(5, 230, 55, 40), "Height:");
-        heightStr = GUI.TextField(new Rect(65, 230, 100, 20), heightStr, 10);
-
-        GUI.Label(new Rect(5, 250, 55, 40), "Orbit:");
-        orbitStr = GUI.TextField(new Rect(65, 250, 100, 20), orbitStr, 10);
-        try {
-            spin = spinStr.Trim().Equals("") ? 0 : float.Parse(spinStr);
-            pitch = heightStr.Trim().Equals("") ? 0 : float.Parse(heightStr);
-            orbit = orbitStr.Trim().Equals("") ? 0 : float.Parse(orbitStr);
-        } catch (FormatException ex) {
-            Debug.Log(ex);
-        } catch (OverflowException ex) {
-            Debug.Log(ex);
-        }
-
-        float angle;
-        Vector3 axis;
-        capsule.localRotation.ToAngleAxis(out angle, out axis);
-        axis = axis.normalized;  // think ToAngleAxis already normalizes, but just in case
-
-        int boxBottom = 280 + 115;
-        GUI.Label(new Rect(5, boxBottom + 20, 200, 40), string.Format("Handle X: {0:0.00}", axis.x));
-        GUI.Label(new Rect(5, boxBottom + 40, 200, 40), string.Format("Handle Y: {0:0.00}", axis.y));
-        GUI.Label(new Rect(5, boxBottom + 60, 200, 40), string.Format("Handle Z: {0:0.00}", axis.z));
-
-        Quaternion q = capsule.localRotation;
-        string ijkw = string.Format("Quaternion: \nX: {0:0.000}\n Y: {1:0.000}\n Z: {2:0.000}\n W: {3:0.000}\n",
-            q.x, q.y, q.z, q.w
-        );
-        GUIStyle style = new GUIStyle(GUI.skin.box);
-        style.fontSize = 18;
-        GUI.Box(new Rect(5, 280, 120, 115), ijkw, style);
-
-
-        Vector3 qAxis = new Vector3(q.x, q.y, q.z).normalized;
-        int bottom = 280 + 115 + 100;
-        GUI.Label(new Rect(5, bottom + 20, 200, 40), string.Format("\"axis\" X: {0:0.00}", axis.x));
-        GUI.Label(new Rect(5, bottom + 40, 200, 40), string.Format("\"axis\" Y: {0:0.00}", axis.y));
-        GUI.Label(new Rect(5, bottom + 60, 200, 40), string.Format("\"axis\" Z: {0:0.00}", axis.z));
-
+        GUI.Label(new Rect(5, 235, 200, 40), "Spin:   Q  W   (E to reset)", style2);
+        GUI.Label(new Rect(5, 255, 200, 40), "Pitch:   A  S    (D to reset)", style2);
+        GUI.Label(new Rect(5, 275, 200, 40), "Orbit:   Z  X    (C to reset) ", style2);
     }
 }
 
