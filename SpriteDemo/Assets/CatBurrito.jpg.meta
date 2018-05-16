@@ -1,0 +1,181 @@
+fileFormatVersion: 2
+guid: a8338238b71d9b84bbe941d62969429d
+timeCreated: 1524126667
+licenseType: Free
+TextureImporter:
+  fileIDToRecycleName:
+    21300000: CatBurrito_0
+    21300002: CatBurrito_1
+    21300004: CatBurrito_2
+    21300006: CatBurrito_3
+  externalObjects: {}
+  serializedVersion: 4
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 1
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+  isReadable: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: -1
+    aniso: -1
+    mipBias: -1
+    wrapU: -1
+    wrapV: -1
+    wrapW: -1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 1
+  spriteExtrude: 32
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spriteBorder: {x: 105, y: 51, z: 163, w: 66}
+  spritePixelsToUnits: 50
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationDetail: 0.47
+  textureType: 0
+  textureShape: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  platformSettings:
+  - buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    androidETC2FallbackOverride: 0
+  - buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    androidETC2FallbackOverride: 0
+  - buildTarget: WebGL
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    androidETC2FallbackOverride: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: CatBurrito_1
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 177
+        width: 550
+        height: 67
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline:
+      - - {x: -275, y: -33.25}
+        - {x: 275, y: -33.25}
+        - {x: 275, y: 33.625}
+      physicsShape:
+      - - {x: -153.45616, y: -7.6433716}
+        - {x: -275, y: -33.25}
+        - {x: 275, y: -33.25}
+        - {x: 87.31369, y: 5.9243164}
+      tessellationDetail: 0
+    - serializedVersion: 2
+      name: CatBurrito_2
+      rect:
+        serializedVersion: 2
+        x: 82
+        y: 89
+        width: 468
+        height: 55
+      alignment: 9
+      pivot: {x: 0.37019473, y: 0.5418755}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline:
+      - - {x: -67.52748, y: 4.2283554}
+        - {x: -194.72452, y: -16.542755}
+        - {x: 70.354126, y: -17.986351}
+      - - {x: 21.997894, y: -6.1059494}
+        - {x: 21.997894, y: 16.506851}
+        - {x: 55.351776, y: 16.506851}
+        - {x: 55.351776, y: -6.1059494}
+      physicsShape:
+      - - {x: -170.98108, y: 17.230713}
+        - {x: -173.80768, y: -15.725075}
+        - {x: -98.11127, y: -17.986359}
+        - {x: 176.06903, y: 5.924309}
+      tessellationDetail: 0
+    - serializedVersion: 2
+      name: CatBurrito_3
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 0
+        width: 550
+        height: 67
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline:
+      - - {x: -275, y: 33.625}
+        - {x: -275, y: -33.25}
+        - {x: 275, y: -33.25}
+        - {x: 275, y: 33.625}
+      physicsShape:
+      - - {x: -275, y: 33.625}
+        - {x: -275, y: -33.25}
+        - {x: 275, y: -33.25}
+        - {x: 275, y: 33.625}
+      tessellationDetail: 0
+    outline:
+    - - {x: -141.13283, y: 30.491653}
+      - {x: -275, y: -134.5}
+      - {x: 275, y: -134.5}
+      - {x: 10.251556, y: 18.548126}
+    - - {x: -64.69418, y: -19.657074}
+      - {x: -35.830612, y: 118.68895}
+      - {x: 81.11655, y: 90.323044}
+      - {x: -11.9435425, y: -16.671165}
+    physicsShape:
+    - - {x: -275, y: 134.5}
+      - {x: -275, y: -134.5}
+      - {x: 275, y: -134.5}
+      - {x: 275, y: 134.5}
+  spritePackingTag: 
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
