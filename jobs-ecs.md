@@ -13,8 +13,8 @@ In Unity's traditional programming model, an instance of the GameObject class is
 In ECS, an ***entity*** is just a unique ID number, and ***components*** are structs implementing the **IComponentData** interface (which has no required methods): 
 
 - An IComponentData struct can have methods, but Unity itself will not call them.
-- A single entity can have any number of associated components but only one component of any particular type. An entity's set of component types is called its ***archetype***. Like the cloumns of a relational table, there is no sense of order amongst the component types of an archtype: given component types A, B, and C, then ABC, ACB, BAC, BCA, CAB, and CBA all describe the same archetype.
-- An IComponentData struct should generally be very small, and it should not store references. Large data, like textures and meshes, should not be stored in a component.
+- A single entity can have any number of associated components but only one component of any particular type. An entity's set of component types is called its ***archetype***. Like the cloumns of a relational table, there is no sense of order amongst the component types of an archetype: given component types A, B, and C, then ABC, ACB, BAC, BCA, CAB, and CBA all describe the same archetype.
+- An IComponentData struct should generally be very small, and it should not store references. Large data, like textures and meshes, should not be stored in components.
 
 A ***system*** is a class inheriting from **ComponentSystem**, whose methods like *OnUpdate()* and *OnInitialize()* are called in the system event loop. It's common in these system event methods to access many hundreds or thousands of entities rather than just one or a few.
 
@@ -25,8 +25,8 @@ A **World** stores an EntityManager instance and a set of ComponentSystem instan
 An EntityManager's entities and their components are stored in chunks:
 
 - Each chunk is 16KB.
-- A single chunk only stores entities of the same ***archetype***. (Consequently, adding or removing a component type on an entity requires moving it to another chunk.)
-- A chunk is divided into parallel arrays for each component of the archetype and one array for the entity ids themselves. (These are not normal C# arrays but rather arrays stored directly in the chunk's native-allocated memory.)
+- A single chunk only stores entities of the same ***archetype***. (Consequently, adding or removing a component type on an entity requires moving it to another chunk!)
+- A chunk is divided into parallel arrays: one for each component of the archetype and one array for the entity ids themselves. (These are not normal C# arrays but rather arrays stored directly in the chunk's native-allocated memory.)
 - These arrays are kept tightly packed: when an entity is removed, everything above is shifted down to fill the gap.
 
 For example, say a chunk stores entities of the archetype made up of component types A, B, and C. The chunk then could store approximately:
@@ -36,7 +36,7 @@ For example, say a chunk stores entities of the archetype made up of component t
     int maxEntities = 16536 / (sizeof(id) + sizeof(A) + sizeof(B) + sizeof(C));
 ```
 
-So this chunk is divided into four logical arrays, each *numEntities* in size: one array for the ids, followed by three arrays for each of the component types. Of course the chunk also stores the offsets to these four arrays and the count of entities currently stored. The first entity of the chunk is stored at index 0 of all four of the arrays, the second at index 1, the third at index 2, *etc.* If the chunk has 100 stored entities but we remove the entity at index 37, the entities at indexes 38 and above must all be moved down a slot.
+So this chunk is divided into four logical arrays, each *maxEntities* in size: one array for the ids, followed by three arrays, one for each of the component types. The chunk also, of course, stores the offsets to these arrays and the count of entities currently stored. The first entity of the chunk is stored at index 0 of all four of the arrays, the second at index 1, the third at index 2, *etc.* If the chunk has, say, 100 stored entities but we remove the entity at index 37, the entities at indexes 38 and above all get moved down a slot.
 
 ### todo
 
