@@ -26,8 +26,7 @@ An EntityManager's entities and their components are stored in chunks:
 
 - Each chunk is 16KB.
 - A single chunk only stores entities of the same ***archetype***. (Consequently, adding or removing a component type on an entity requires moving it to another chunk!)
-- A chunk is divided into parallel arrays: one for each component of the archetype and one array for the entity ids themselves. (These are not normal C# arrays but rather arrays stored directly in the chunk's native-allocated memory.)
-- These arrays are kept tightly packed: when an entity is removed, everything above is shifted down to fill the gap.
+- A chunk is divided into parallel arrays: one for each component of the archetype and one array for the entity ids themselves. (These are not normal C# arrays but rather arrays stored directly in the chunk's native-allocated memory.) The arrays are kept tightly packed: when an entity is removed, everything above its slots is shifted down in the arrays to fill the gaps.
 
 For example, say a chunk stores entities of the archetype made up of component types A, B, and C. The chunk then could store approximately:
 
@@ -37,6 +36,38 @@ For example, say a chunk stores entities of the archetype made up of component t
 ```
 
 So this chunk is divided into four logical arrays, each *maxEntities* in size: one array for the ids, followed by three arrays, one for each of the component types. The chunk also, of course, stores the offsets to these arrays and the count of entities currently stored. The first entity of the chunk is stored at index 0 of all four of the arrays, the second at index 1, the third at index 2, *etc.* If the chunk has, say, 100 stored entities but we remove the entity at index 37, the entities at indexes 38 and above all get moved down a slot.
+
+Aside from the chunks, an EntityManager also stores an array of EntityData structs:
+
+```csharp
+
+struct EntityData
+{
+    public Chunk* Chunk;
+    public int IndexInChunk;
+    public Archetype* Archetype;
+    public int Version;
+}
+```
+
+The EntityData of entity id *n* is stored at index *n* in this array, *e.g.* entity 72's EntityData is stored at index 72. So the ids themselves are implied in this array but not actually stored.
+
+The Chunk field points to the chunk where the entity and its components are actually stored, and IndexInChunk denotes the index within the arrays of that chunk.
+
+A pointer to an entity's archetype is stored in its chunk, but the same pointer is also stored in the EntityData so as to avoid one extra lookup in some common operations.
+
+Not all slots in the EntityData array denote living entities because:
+
+1. entities can be destroyed
+2. the array capacity exceeds the number of created entities (except in the rare case where the number of created entities exactly matches the capacity of the array)
+
+A free slot is denoted by Chunk being null. The EntityManager keeps track of the first free slot in the array, and a free slot's IndexInChunk field is repurposed to store the index of the next free slot. When new entities are created, they are created in the first free slots, which are quickly found by following this chain of indexes.
+
+But what if an entity is destroyed and then its id reused for a subsequently created entity? How do we avoid confusing the new entity for the old? Well that's why we have the Version field. The Version fields are all initialized to 1, and when an entity is destroyed, its Version is incremented. To reference an entity, we need not just its id but also its version so as to make sure our referenced entity still exists: if we lookup an entity but the version is greater than in our reference, that means the entity we're referencing no longer exists.
+
+When we create more entities than will fit in the EntityData array, it's expanded by copying everything to a new, larger array. The array is never shrunk.
+
+Because the EntityData array stores the indexes of the entities within the chunks, these indexes must be updated when entities are moved within/between chunks. (Recall that many entities may get shifted down slots when an entity is removed from a chunk, hence removing entities is one of the costlier operations.)
 
 ### todo
 
