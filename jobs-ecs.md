@@ -20,6 +20,16 @@ A ***system*** is a class inheriting from **ComponentSystem**, whose methods lik
 
 A **World** stores an EntityManager instance and a set of ComponentSystem instances. Each EntityManager has its own set of entities, so the entities of one World are separate from any other World, and the systems of a World only access entities of that World. A common reason to have more than one world is to separate simulation from presentation, which is particularly useful for networked games because it separates client-only concerns from server concerns. In cases where multiple Worlds need the same ComponentSystem, we give each World its own instance; a ComponentSystem used by just one World usually has just one instance.
 
+### pure ECS vs. hybrid
+
+The old Component types offer tons of functionality: rendering, collisions, physics, audio, animations, *etc.* As of yet, the ECS package has a few stock components and systems for basic rendering but very little else. Consequently, making a 'pure' ECS-only game today requires replicating much core engine functionality yourself. As we'll demonstrate later, a 'hybrid' approach uses both ECS and the old GameObjects/Components. (Just be clear that the more we involve GameObjects, the more we lose linear memory layout.) Over the coming years, the set of stock ECS components and systems should grow to provide much more functionality.
+
+Also understand that the ECS editor workflow is very much a work-in-progress. The Entity Debugger window allows us to inspect systems and entities, but we cannot yet construct scenes out of entities without involving GameObjects.
+
+### native containers
+
+
+
 ### entity storage
 
 An EntityManager's entities and their components are stored in chunks:
@@ -59,7 +69,7 @@ A pointer to an entity's archetype is stored in its chunk, but the same pointer 
 Not all slots in the EntityData array denote living entities because:
 
 1. entities can be destroyed
-2. the array capacity exceeds the number of created entities (except in the rare case where the number of created entities exactly matches the capacity of the array)
+2. the array length exceeds the number of created entities (except in the rare case where the number of created entities exactly matches the length of the array)
 
 A free slot is denoted by Chunk being null. The EntityManager keeps track of the first free slot in the array, and a free slot's IndexInChunk field is repurposed to store the index of the next free slot. When new entities are created, they are created in the first free slots, which are quickly found by following this chain of indexes.
 
@@ -69,14 +79,22 @@ When we create more entities than will fit in the EntityData array, it's expande
 
 Because the EntityData array stores the indexes of the entities within the chunks, these indexes must be updated when entities are moved within/between chunks. (Recall that many entities may get shifted down slots when an entity is removed from a chunk, hence removing entities is one of the costlier operations.)
 
+### shared components
+
+The ISharedComponentData interface is like IComponentData except entities of a single archetype which have an equal shared component value all share the same value in memory.
+
+A chunk stores only one shared component value of a particular type, and so setting a shared component value on an entity usually requires moving the entity to another chunk. For example, say two entities in a chunk share a FooSharedComponent value. If we set a new FooSharedComponent value on one entity, the other entity still has the old value, and the two values cannot both exist in the same chunk, so the modified entity is moved to a new chunk. The entity manager hashes shared component values to keep track of which chunks store which shared values (we wouldn't want multiple chunks to needlessly store the same shared component values and thereby excessively fragment our entities across chunks).
+
+Shared components are most appropriate for component types which are mutated infrequently and which have the same values across many entities. For example, a component consisting of a single enum field is a good candidate for a shared component because many entities typically would share the same enum values.
+
 ### todo
 
 [is an effort made to avoid fragmentation from too many non-full chunks of a given archetype?]
 
-An EntityManager stores an array used to lookup components by their entity's id, as well as to track which id numbers are in use.
 
 
-The Entity struct is an ID int and a Version int. When an entity is removed, its ID may be reused for a subsequently created entity, and the version number is incremented for each reuse of an ID.
+
+
 
 
 
@@ -85,9 +103,7 @@ what does it mean for World to be active?
 
 what about arrays? component shouldn't (can't?) have an array because that would be a reference
 
-### shared components
 
-ISharedComponentData
 
 ## the Job System
 
