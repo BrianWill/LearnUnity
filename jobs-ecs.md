@@ -1,8 +1,8 @@
 Unity version 2018.1 introduces a few major new features for achieving high performance:
 
- - The **Job System** farms units of work (jobs) out to threads while helping avoid race conditions.
- - The **Burst compiler** optimizes code using [SIMD instructions](https://en.wikipedia.org/wiki/SIMD) (which are particularly beneficial for math-heavy code). The Burst compiler is not a general-purpose C# compiler: it only works on Job System code written in a subset of C# called HPC# (High Performance C#).
- - **ECS (Entity Component System)** is an architectural pattern in which we lay out data in native (non-garbage collected) memory in the optimal, linear way (meaning tightly packed, contiguous, and accessible in sequence). By separating code from data, ECS not only improves performance, it (arguably) improves code structure over the traditional Object-Oriented approach.
+ - The **Job System** farms units of work called 'jobs' out to threads while helping us avoid race conditions.
+ - The **Burst compiler** optimizes code using [SIMD instructions](https://en.wikipedia.org/wiki/SIMD), which are particularly beneficial for math-heavy code. The Burst compiler is not a general-purpose C# compiler: it only works on Job System code written in a subset of C# called HPC# (High Performance C#).
+ - **ECS (Entity Component System)** is an architectural pattern in which we lay out data in native (non-garbage collected) memory in the optimal, linear fashion: tightly packed, contiguous, and accessible in sequence. By separating code from data, ECS not only improves performance, it (arguably) improves code structure over the traditional Object-Oriented approach.
 
 ECS and the Job System can be used separately, but they are highly complementary: ECS guarantees data is layed out linearly in memory, which speeds up job code accessing the data and gives the Burst compiler more optimization opportunities.
 
@@ -17,13 +17,13 @@ In ECS, an ***entity*** is just a unique ID number, and ***components*** are str
 - An IComponentData struct should generally be very small, and it should not store references. Large data, like textures and meshes, should not be stored in components.
 - Unlike GameObjects, entities cannot have parents or children.
 
-A ***system*** is a class inheriting from **ComponentSystem**, whose methods like *OnUpdate()* and *OnInitialize()* are called in the system event loop. It's common in these system event methods to access many hundreds or thousands of entities rather than just one or a few.
+A ***system*** is a class inheriting from **ComponentSystem**, whose methods *OnUpdate()*, *OnCreateManager()*, and *OnDestroyManager()* are called in the system event loop. It's common in system updates to access many hundreds or thousands of entities rather than just one or a few.
 
 A **World** stores an EntityManager instance and a set of ComponentSystem instances. Each EntityManager has its own set of entities, so the entities of one World are separate from any other World, and the systems of a World only access entities of that World. A common reason to have more than one world is to separate simulation from presentation, which is particularly useful for networked games because it separates client-only concerns from server concerns. In cases where multiple Worlds need the same ComponentSystem, we give each World its own instance; a ComponentSystem used by just one World usually has just one instance.
 
 ### pure ECS vs. hybrid
 
-The old Component types offer tons of functionality: rendering, collisions, physics, audio, animations, *etc.* As of yet, the ECS package has a few stock components and systems for basic rendering but has very little else. Consequently, making a 'pure' ECS-only game today requires replicating much core engine functionality yourself. As we'll demonstrate later, a 'hybrid' approach uses both ECS and the old GameObjects/Components. (Just be clear that the more we involve GameObjects, the more we lose linear memory layout.) Over the coming years, the set of stock ECS components and systems should grow to provide much more functionality.
+The old Component types offer tons of functionality: rendering, collisions, physics, audio, animations, *etc.* As of yet, the ECS package has a few stock components and systems for basic rendering but has very little else. Consequently, making a 'pure' ECS-only game today requires replicating much core engine functionality yourself. As we'll demonstrate later, a 'hybrid' approach uses both ECS and the old GameObjects/Components. (Just be clear that the more we involve GameObjects, the more we lose the benefits of linear memory layout.) Eventually, the set of stock ECS components and systems should grow to provide all the functionality of the old GameObjects and their Components.
 
 Also understand that the ECS editor workflow is very much a work-in-progress. The Entity Debugger window allows us to inspect systems and entities, but we cannot yet construct scenes out of entities without involving GameObjects.
 
@@ -34,7 +34,7 @@ Not every piece of data fits well into the mold of entities and components, whic
 The provided native container types are:
 
 - NativeArray
-- NativeSlice (logical indices into an array)
+- NativeSlice (logical indices into a NativeArray)
 - NativeList
 - NativeHashMap
 - NativeQueue
@@ -42,9 +42,11 @@ The provided native container types are:
 
 You can implement your own native containers as described [here](https://github.com/Unity-Technologies/EntityComponentSystemSamples/blob/master/Documentation/content/custom_job_types.md#custom-nativecontainers).
 
-Because they have pointers, native containers cannot be stored in components (and besides, we shouldn't store large data in components). Instead, long-lived native containers are generally stored in the systems themselves.
+Because they're not blitable, native containers cannot be stored in components (and besides, we shouldn't store large data in components). Instead, long-lived native containers are generally stored in the systems themselves.
 
-The native containers include thread-safety semantics (as we'll discuss with the Job System).
+[why are NativeContainers not blitable?]
+
+As we'll discuss with the Job System, the native containers have thread-safety semantics.
 
 ### entity storage
 
@@ -89,7 +91,7 @@ struct EntityData
 }
 ```
 
-The EntityData of entity id *n* is stored at index *n* in this array, *e.g.* entity 72's EntityData is stored at index 72. So the id's themselves are implied in this array but not actually stored.
+The EntityData of entity *n* is stored at index *n* in this array, *e.g.* entity 72's EntityData is stored at index 72. So the id's themselves are implied in this array but not actually stored.
 
 The Chunk field points to the chunk where the entity and its components are actually stored, and IndexInChunk denotes the index within the arrays of that chunk.
 
@@ -102,45 +104,47 @@ Not all slots in the EntityData array denote living entities because:
 
 A free slot is denoted by the Chunk field being null. The EntityManager keeps track of the first free slot in the array, and a free slot's IndexInChunk field is repurposed to store the index of the next free slot. When new entities are created, they are created in the first free slots, which are quickly found by following this chain of indexes.
 
-But what if an entity is destroyed and then its id reused for a subsequently created entity? How do we avoid confusing the new entity for the old? Well that's why we have the Version field. The Version fields are all initialized to 1, and when an entity is destroyed, its Version is incremented. To reference an entity, we need not just its id but also its version so as to make sure our referenced entity still exists: if we lookup an entity but the version is greater than in our reference, that means the entity we're referencing no longer exists.
+But what if an entity is destroyed and then its id reused for a subsequently created entity? How do we avoid confusing the new entity for the old? Well in truth, an entity's id is *really* a combination of its index in the EntityData array *and* its Version. The Version fields are all initialized to 1, and when an entity is destroyed, its Version is incremented. To reference an entity, we need not just its index but also its version so as to make sure our referenced entity still exists: if we lookup an entity by index but the version is greater than in our reference, that means the entity we're referencing no longer exists.
 
-When we create more entities than will fit in the EntityData array, it's expanded by copying everything to a new, larger array. The array is never shrunk.
+When we create more entities than will fit in the EntityData array, the array is expanded by copying everything to a new, larger array. The array is never shrunk.
 
 Because the EntityData array stores the indexes of the entities within the chunks, these indexes must be updated when entities are moved within/between chunks. (Recall that many entities may get shifted down slots when an entity is removed from a chunk, hence removing entities is one of the costlier operations.)
 
 ### shared components
 
-For some components whose values frequently reoccur among entities, we'd like to avoid storing those values repeatedly in memory. The ISharedComponentData interface does just that: entities of a single archetype which have equal values of an ISharedComponentData type all share that value in memory rather than each having its own copy.
+For some components whose values frequently reoccur among entities, we'd like to avoid storing those values repeatedly in memory. The ISharedComponentData interface does just that: entities of the same archetype which have equal values of an ISharedComponentData type all share that value in memory rather than each having its own copy.
 
 A chunk stores only one shared component value of a particular type, and so setting a shared component value on an entity usually requires moving the entity to another chunk. Say two entities in a chunk share a FooSharedComponent value: if we set a new FooSharedComponent value on one entity, the other entity still has the old value, and the two values cannot both exist in the same chunk, so the modified entity is moved to a new chunk.
 
-The entity manager hashes shared component values to keep track of which chunks store which shared values (we wouldn't want multiple chunks to needlessly store the same shared component values and thereby excessively fragment our entities across chunks).
+The entity manager hashes shared component values to keep track of which chunks store which shared values. (We wouldn't want multiple chunks to needlessly store the same shared component values and thereby excessively fragment our entities across chunks.)
+
+Unlike regular components, shared components need not be blitable and so can store references into native and managed memory.
+
+[can we access sharedcomponents in jobs if they're non-blitable?] 
 
 Shared components are most appropriate for component types which are mutated infrequently and which have the same values across many entities. For example, a component consisting of a single enum field is a good candidate for a shared component because many entities typically would share the same enum values.
 
 ### data modeling guidelines
 
-Our components cannot store arrays or collections of any kind, including native containers. What we *can* do in our components, though, is store entity ids and store indexes into native containers.
+Our (non-shared) components cannot store arrays or collections of any kind, including native containers. What we *can* store in our components, though, are entity ids and indexes into native containers.
 
-Say in a deathmatch game, the player who killed another the most times is that other player's nemesis. A single player can be the nemesis of multiple other players, so this is a one-to-many relationship. The most obvious way to represent this is to give the player component a Nemesis field to store the entity id (and entity version!) of the player's nemesis (with id -1 denoting that the player has no nemesis).
+Say in a deathmatch game, the player who killed another the most times is that other player's nemesis. A single player can be the nemesis of multiple other players, so this is a one-to-many relationship. The most obvious way to represent this is to give the player component a Nemesis field to store the entity id of the player's nemesis (with id index -1 denoting that the player has no nemesis).
 
-However, be clear that, when looping through all player entities, following these Nemesis references means jumping around memory, thus largely defeating the benefits of linear memory layout. (In fact, an entity lookup is actually a bit more costly than following ordinary memory references because it requires looking in the EntityData array to find the entity's Chunk and IndexInChunk rather than just directly reading an address.) Sometimes non-linear access is necessary, but just be clear we should endeavor to minimize non-linear access.
+However, when looping through all player entities, understand that following these Nemesis references means jumping around memory, thus largely defeating the benefits of linear memory layout. (In fact, an entity lookup through the EntityManager is actually a bit more costly than following ordinary memory references because it requires looking in the EntityData array to find the entity's Chunk and IndexInChunk rather than just directly reading an address.) Sometimes non-linear access is necessary, but just be clear we should endeavor to minimize non-linear access.
 
 What about many-to-many relationships? Say we have many characters, and each character has an inventory of items. One solution is the entity equivalent of a relational join table: for every item in a character's inventory, we'd have an entity with an Ownership component referencing an owner entity and an item entity.
 
-An obvious issue with this arrangement is that common queries like 'Does this character have this item?' require traversing all of these entities.
-
+An obvious issue with this arrangement is that common queries like *'Does this character have this item?'* require traversing all of these entities.
 
 [use nativecontainers for alternate data structures? or use entities + nativeContainers for cache/lookups? is there benefit in always using entities for authoritative data?]
 
 [depends on scale, of course: if you have only a few characters with small inventories, the join entities may be perfectly fine by themselves]
 
+[a single-dimension array of a blitable type is itself blitable, right? so is it allowed in component? test this]
 
-[from this example, seems ISharedComponent data can have references? also contains large data, like  UnityEngine.Mesh. So then can't access these shared components in jobs? or just the fields which are managed types?] 
+### integrating ECS with GameObjects/Components
 
-
-[a single-dimension array of blitable type is itself blitable, right? so is it allowed in component?]
-
+As mentioned, ECS as of yet has few stock components and systems, and so lacks most of the functionality of the old GameObjects and their Components. Thus we may wish to still use GameObjects along with ECS.
 
 ### API examples
 
@@ -180,28 +184,26 @@ public class MySystem: ComponentSystem
         // (capacity is deprecated?)
     }
 
-    public void OnDestroyManager()
+    protected override void OnDestroyManager()
     {
         // called upon destruction
     }
 
-    public void OnUpdate()
+    protected override void OnUpdate()
     {
         // called every frame
     }
 }
 ```
 
-The bootstraping process automatically creates an instance of each ComponentSystem and adds them to the default World.
+The bootstraping process automatically creates an instance of each ComponentSystem and adds the instances to the default World.
 
 Execution order of systems is automatically optimized, but we can control the order when needed with attributes:
 
 ```csharp
-// MySystem will update before SomeSystem 
-// (but not necessarily immediately before)
+// MySystem will update at some point before SomeSystem 
 [UpdateBefore(typeof(SomeSystem))]   
-// MySystem will update after OtherSystem 
-// (but not necessarily immediately after)
+// MySystem will update at some point after OtherSystem 
 [UpdateAfter(typeof(OtherSystem))]   
 public class MySystem: ComponentSystem
 { 
@@ -212,11 +214,9 @@ public class MySystem: ComponentSystem
 Systems can belong to groups. System and groups can be ordered relative to other systems and groups. A group is denoted simply by an empty class:
 
 ```csharp
-// systems in MyUpdateGroup will update before OtherGroup 
-// (but not necessarily immediately before)
+// systems in MyUpdateGroup will update at some point before OtherGroup 
 [UpdateBefore(typeof(OtherGroup))]
-// systems in MyUpdateGroup will update after SomeSystem
-// (but not necessarily immediately after)
+// systems in MyUpdateGroup will update at some point after SomeSystem
 [UpdateAfter(typeof(SomeSystem))]
 public class MyUpdateGroup
 {}
@@ -229,54 +229,103 @@ public class MySystem: ComponentSystem
 }
 ```
 
-Contradictory orderings, such as A before B but B before A, trigger runtime errors.
+Contradictory orderings, such as A-before-B but B-before-A, trigger runtime errors.
 
 #### EntityManager
 
+Static methods of EntityManager allow 
+
 ```csharp
-// Create an Entity with no components on it
-var entity = EntityManager.CreateEntity();
+World world = World.Active;  // the default World
+EntityManager em = world.GetOrCreateManager<EntityManager>();
 
-// Adding a component at runtime
-EntityManager.AddComponent(entity, new MyComponentData());
+// create an entity with no components (yet)
+Entity entity = em.CreateEntity();
+// the index and version together form a logical entity id
+int index = entity.Index;     
+int version = entity.Version;
 
-// Get the ComponentData
-MyComponentData myData = EntityManager.GetComponentData<MyComponentData>(entity);
+// add a component to an existing entity
+em.AddComponent(entity, new MyComponent());
 
-// Set the ComponentData
-EntityManager.SetComponentData(entity, myData);
+// get the component of an entity
+MyComponent myComp = em.GetComponentData<MyComponent>(entity);
 
-// Removing a component at runtime
-EntityManager.RemoveComponent<MyComponentData>(entity);
+// set new value for the component
+// (throws exception if entity does not already have component of type MyComponent)
+em.SetComponentData<MyComponent>(entity, myComp);
 
-// Does the Entity exist and does it have the component?
-bool has = EntityManager.HasComponent<MyComponentData>(entity);
+// remove a component
+// (throws exception if entity does not have component of type MyComponent)
+em.RemoveComponent<MyComponent>(entity);
 
-// Is the Entity still alive?
-bool has = EntityManager.Exists(entity);
+// true if the entity exists and has component of type MyComponent
+bool has = em.HasComponent<MyComponent>(entity);
 
-// Instantiate the Entity
-var instance = EntityManager.Instantiate(entity);
+// true if entity exists (false if never existed or if has been destroyd)
+bool exists = em.Exists(entity);
 
-// Destroy the created instance
-EntityManager.DestroyEntity(instance);
+// create new entity which is copy of existing entity (same components and data, but new id)
+Entity entity2 = em.Instantiate(entity);
+
+// destroy an entity
+em.DestroyEntity(entity2);
 ```
 
-using EntityManager static methods
+#### ComponentGroup
 
+```csharp
+public MySystem : ComponentSystem
 
-    ExclusiveEntityTransaction
+    ComponentGroup group;
 
-    MoveEntitiesFrom
+    public void OnCreateManager(int capacity)
+    {
+        // ComponentGroup is a class and so GC'd
+        // (relatively expensive to create, so should not be created in OnUpdate)
+        group = GetComponentGroup(
+            typeof(FooComponent),
+            typeof(BarComponent)
+        );
+    }
+
+    protected override void OnUpdate()
+    {
+        // get iterators from the ComponentGroup
+        EntityArray entities = group.GetEntityArray();
+        ComponentDataArray<FooComponent> foos = group.GetComponentDataArray<FooComponent>();
+        ComponentDataArray<BarComponent> bars = group.GetComponentDataArray<BarComponent>();
+
+        // loop through every entity with a Foo and a Bar
+        // (the iterators are all parallel and so all have same length)
+        for (int i = 0; i != entities.length; i++) 
+        {
+            Entity e = entities[i];
+            FooComponent f = foos[i];
+            BarComponent b = bars[i];
+            // ...
+        }
+    }
+```
 
 #### EntityCommandBuffer
 
-#### ComponentGroup
+
+
+
 
 
 injection
 
     can inject one system into another (why? so as to share fields?)
+
+
+
+
+ExclusiveEntityTransaction
+
+ MoveEntitiesFrom
+
 
 
 
