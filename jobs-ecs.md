@@ -15,6 +15,7 @@ In ECS, an ***entity*** is just a unique ID number, and ***components*** are str
 - An IComponentData struct can have methods, but Unity itself will not call them.
 - A single entity can have any number of associated components but only one component of any particular type. An entity's set of component types is called its ***archetype***. Like the cloumns of a relational table, there is no sense of order amongst the component types of an archetype: given component types A, B, and C, then ABC, ACB, BAC, BCA, CAB, and CBA all describe the same archetype.
 - An IComponentData struct should generally be very small, and it should not store references. Large data, like textures and meshes, should not be stored in components.
+- Unlike GameObjects, entities cannot have parents or children.
 
 A ***system*** is a class inheriting from **ComponentSystem**, whose methods like *OnUpdate()* and *OnInitialize()* are called in the system event loop. It's common in these system event methods to access many hundreds or thousands of entities rather than just one or a few.
 
@@ -28,7 +29,7 @@ Also understand that the ECS editor workflow is very much a work-in-progress. Th
 
 ### native containers
 
-Not every piece of data fits well into the mold of entities and components, which is one reason why Unity provides a set of 'native containers': basic data structures implemented as structs referencing native memory. As their memory is not garbage-collected, it's your responsibility to deallocate any native container (by calling its *Dispose()* method) when it's no longer needed.
+Not every piece of data fits well into the mold of entities and components, which is one reason why Unity provides a set of 'native containers': basic data structures implemented as structs pointing into native memory. As this memory is not garbage-collected, it's your responsibility to deallocate any native container (by calling its *Dispose()* method) when it's no longer needed.
 
 The provided native container types are:
 
@@ -64,7 +65,7 @@ So this chunk is divided into four logical arrays, each *maxEntities* in size: o
 
 What this chunk layout allows us to do very efficiently is loop over a set of component types for all entities. For example, to loop over all entities with component types A and B:
 
-```
+```csharp
 // pseudocode
 for (all chunks of archetypes including A and B)
     for (i = 0; i < chunk.count; i++)
@@ -97,9 +98,9 @@ A pointer to an entity's archetype is stored in its chunk, but the same pointer 
 Not all slots in the EntityData array denote living entities because:
 
 1. entities can be destroyed
-2. the array length exceeds the number of created entities (except in the rare case where the number of created entities exactly matches the length of the array)
+2. the array length exceeds the number of created entities (except in the rare case where the number of created entities *exactly* matches the length of the array)
 
-A free slot is denoted by Chunk being null. The EntityManager keeps track of the first free slot in the array, and a free slot's IndexInChunk field is repurposed to store the index of the next free slot. When new entities are created, they are created in the first free slots, which are quickly found by following this chain of indexes.
+A free slot is denoted by the Chunk field being null. The EntityManager keeps track of the first free slot in the array, and a free slot's IndexInChunk field is repurposed to store the index of the next free slot. When new entities are created, they are created in the first free slots, which are quickly found by following this chain of indexes.
 
 But what if an entity is destroyed and then its id reused for a subsequently created entity? How do we avoid confusing the new entity for the old? Well that's why we have the Version field. The Version fields are all initialized to 1, and when an entity is destroyed, its Version is incremented. To reference an entity, we need not just its id but also its version so as to make sure our referenced entity still exists: if we lookup an entity but the version is greater than in our reference, that means the entity we're referencing no longer exists.
 
@@ -109,7 +110,7 @@ Because the EntityData array stores the indexes of the entities within the chunk
 
 ### shared components
 
-For components where most entities have the same value as many other entities, we'd like to avoid storing those same values repeatedly in memory. The ISharedComponentData interface does just that: entities of a single archetype which have equal values of an ISharedComponentData type all share that value in memory rather than each having its own copy.
+For some components whose values frequently reoccur among entities, we'd like to avoid storing those values repeatedly in memory. The ISharedComponentData interface does just that: entities of a single archetype which have equal values of an ISharedComponentData type all share that value in memory rather than each having its own copy.
 
 A chunk stores only one shared component value of a particular type, and so setting a shared component value on an entity usually requires moving the entity to another chunk. Say two entities in a chunk share a FooSharedComponent value: if we set a new FooSharedComponent value on one entity, the other entity still has the old value, and the two values cannot both exist in the same chunk, so the modified entity is moved to a new chunk.
 
@@ -117,30 +118,190 @@ The entity manager hashes shared component values to keep track of which chunks 
 
 Shared components are most appropriate for component types which are mutated infrequently and which have the same values across many entities. For example, a component consisting of a single enum field is a good candidate for a shared component because many entities typically would share the same enum values.
 
+### data modeling guidelines
+
+Our components cannot store arrays or collections of any kind, including native containers. What we *can* do in our components, though, is store entity ids and store indexes into native containers.
+
+Say in a deathmatch game, the player who killed another the most times is that other player's nemesis. A single player can be the nemesis of multiple other players, so this is a one-to-many relationship. The most obvious way to represent this is to give the player component a Nemesis field to store the entity id (and entity version!) of the player's nemesis (with id -1 denoting that the player has no nemesis).
+
+However, be clear that, when looping through all player entities, following these Nemesis references means jumping around memory, thus largely defeating the benefits of linear memory layout. (In fact, an entity lookup is actually a bit more costly than following ordinary memory references because it requires looking in the EntityData array to find the entity's Chunk and IndexInChunk rather than just directly reading an address.) Sometimes non-linear access is necessary, but just be clear we should endeavor to minimize non-linear access.
+
+What about many-to-many relationships? Say we have many characters, and each character has an inventory of items. One solution is the entity equivalent of a relational join table: for every item in a character's inventory, we'd have an entity with an Ownership component referencing an owner entity and an item entity.
+
+An obvious issue with this arrangement is that common queries like 'Does this character have this item?' require traversing all of these entities.
+
+
+[use nativecontainers for alternate data structures? or use entities + nativeContainers for cache/lookups? is there benefit in always using entities for authoritative data?]
+
+[depends on scale, of course: if you have only a few characters with small inventories, the join entities may be perfectly fine by themselves]
+
+
+[from this example, seems ISharedComponent data can have references? also contains large data, like  UnityEngine.Mesh. So then can't access these shared components in jobs? or just the fields which are managed types?] 
+
+
+[a single-dimension array of blitable type is itself blitable, right? so is it allowed in component?]
+
+
+### API examples
+
+#### IComponentData
+
+```csharp
+struct MyComponent : IComponentData {
+    public float A;
+    public byte B;
+    public OtherComponent C;   // the fields of OtherComponent struct must be blitable
+}
+```
+
+Because we generally don't give the components methods or properties, it generally doesn't make sense to make any field non-public.
+
+The fields must be [blitable types](https://docs.microsoft.com/en-us/dotnet/framework/interop/blittable-and-non-blittable-types).
+
+#### ISharedComponentData
+
+```csharp
+public struct MySharedComponent : ISharedComponentData 
+{
+    public string A;             // can store non-blitable types
+    public NativeArray<int> B;   // can store native containers
+    public Mesh C;               // OK for storing large data
+}
+```
+
+#### ComponentSystem
+
+```csharp
+public class MySystem: ComponentSystem
+{
+    public void OnCreateManager(int capacity)
+    {
+        // called upon creation
+        // (capacity is deprecated?)
+    }
+
+    public void OnDestroyManager()
+    {
+        // called upon destruction
+    }
+
+    public void OnUpdate()
+    {
+        // called every frame
+    }
+}
+```
+
+The bootstraping process automatically creates an instance of each ComponentSystem and adds them to the default World.
+
+Execution order of systems is automatically optimized, but we can control the order when needed with attributes:
+
+```csharp
+// MySystem will update before SomeSystem 
+// (but not necessarily immediately before)
+[UpdateBefore(typeof(SomeSystem))]   
+// MySystem will update after OtherSystem 
+// (but not necessarily immediately after)
+[UpdateAfter(typeof(OtherSystem))]   
+public class MySystem: ComponentSystem
+{ 
+    // ...
+}
+```
+
+Systems can belong to groups. System and groups can be ordered relative to other systems and groups. A group is denoted simply by an empty class:
+
+```csharp
+// systems in MyUpdateGroup will update before OtherGroup 
+// (but not necessarily immediately before)
+[UpdateBefore(typeof(OtherGroup))]
+// systems in MyUpdateGroup will update after SomeSystem
+// (but not necessarily immediately after)
+[UpdateAfter(typeof(SomeSystem))]
+public class MyUpdateGroup
+{}
+
+// MySystem belongs to MyUpdateGroup
+[UpdateInGroup(typeof(MyUpdateGroup))]
+public class MySystem: ComponentSystem
+{
+    // ...
+}
+```
+
+Contradictory orderings, such as A before B but B before A, trigger runtime errors.
+
+#### EntityManager
+
+```csharp
+// Create an Entity with no components on it
+var entity = EntityManager.CreateEntity();
+
+// Adding a component at runtime
+EntityManager.AddComponent(entity, new MyComponentData());
+
+// Get the ComponentData
+MyComponentData myData = EntityManager.GetComponentData<MyComponentData>(entity);
+
+// Set the ComponentData
+EntityManager.SetComponentData(entity, myData);
+
+// Removing a component at runtime
+EntityManager.RemoveComponent<MyComponentData>(entity);
+
+// Does the Entity exist and does it have the component?
+bool has = EntityManager.HasComponent<MyComponentData>(entity);
+
+// Is the Entity still alive?
+bool has = EntityManager.Exists(entity);
+
+// Instantiate the Entity
+var instance = EntityManager.Instantiate(entity);
+
+// Destroy the created instance
+EntityManager.DestroyEntity(instance);
+```
+
+using EntityManager static methods
+
+
+    ExclusiveEntityTransaction
+
+    MoveEntitiesFrom
+
+#### EntityCommandBuffer
+
+#### ComponentGroup
+
+
+injection
+
+    can inject one system into another (why? so as to share fields?)
+
+
+
 ### todo
 
 [is an effort made to avoid fragmentation from too many non-full chunks of a given archetype?]
 
-what does it mean for World to be active?
+what does it mean for World to be active? is it just the default world for static EntityManager calls?
+
+how to create worlds and copy entities between?
 
 
-representing one-to-many and many-to-many relationships?
 
 how much to lean on native containers?
 
+only blitable types in components, but shouldn't a native container be blitable? it's not managed memory, so is the error message just misleading?
+
 when is it ok to store entity references? doesn't looking up entities by id in our loop nullify linear memory benefits?
 
-### the IComponentData interface
-
-
-
-can't have booleans because they're not blitable [why?] instead use enum of struct of byte?
 
 
 ### the ComponentSystem class
 
 
-
+[can't have booleans because they're not blitable, instead use enum of struct of byte?]
 
 
 
