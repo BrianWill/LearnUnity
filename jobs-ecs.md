@@ -158,7 +158,7 @@ struct MyComponent : IComponentData {
 }
 ```
 
-Because we generally don't give the components methods or properties, it generally doesn't make sense to make any field non-public.
+Because we usually don't give the components methods or properties, it generally doesn't make sense to make any field non-public.
 
 The fields must be [blitable types](https://docs.microsoft.com/en-us/dotnet/framework/interop/blittable-and-non-blittable-types).
 
@@ -167,8 +167,8 @@ The fields must be [blitable types](https://docs.microsoft.com/en-us/dotnet/fram
 ```csharp
 public struct MySharedComponent : ISharedComponentData 
 {
-    public string A;             // can store non-blitable types
-    public NativeArray<int> B;   // can store native containers
+    public string A;             // field types needn't be blitable
+    public NativeArray<int> B;   // OK for native containers
     public Mesh C;               // OK for storing large data
 }
 ```
@@ -308,32 +308,43 @@ public MySystem : ComponentSystem
     }
 ```
 
+
+filter 
+
+
 #### EntityCommandBuffer
 
+An EntityCommandBuffer queues up EntityManager add/remove/set operations to be performed later. This is useful because:
+
+1. these operations invalidate ComponentGroup iterators
+2. batching these operations can improve performance
+3. jobs cannot do these operations directly
+
+A ComponentSystem has an EntityCommandBuffer field called *PostUpdateCommands*. Operations queued on this buffer during *OnUpdate()* will be applied after every update.
+
+[always immediately after? or is it smart about batching buffers from multiple systems?]
+
+EntityCommandBuffer's methods correspond to EntityManager's methods: *CreateEntity()*, *AddComponent()*, *SetComponent()*, *etc.*
+
+### injection API
 
 
 
 
-
-injection
-
-    can inject one system into another (why? so as to share fields?)
+can inject one system into another (why? so as to share fields?)
 
 
 
+### hybrid API
 
-ExclusiveEntityTransaction
-
- MoveEntitiesFrom
-
+The GameObjectEntity class is a MonoBehavior
 
 
-
-### todo
+### [questions]
 
 [is an effort made to avoid fragmentation from too many non-full chunks of a given archetype?]
 
-what does it mean for World to be active? is it just the default world for static EntityManager calls?
+does EntityManager have static versions of CreateEntity(), AddComponent(), etc.? Examples in docs imply this is case but I see no such methods in the code
 
 how to create worlds and copy entities between?
 
@@ -347,12 +358,16 @@ when is it ok to store entity references? doesn't looking up entities by id in o
 
 
 
-### the ComponentSystem class
-
 
 [can't have booleans because they're not blitable, instead use enum of struct of byte?]
 
+ExclusiveEntityTransaction
 
+ MoveEntitiesFrom
+
+ injection
+
+    
 
 ## the Job System
 
