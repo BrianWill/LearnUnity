@@ -65,6 +65,8 @@ For example, say a chunk stores entities of the archetype made up of component t
 
 So this chunk is divided into four logical arrays, each *maxEntities* in size: one array for the id's, followed by three arrays, one for each of the component types. The chunk also, of course, stores the offsets to these arrays and the count of entities currently stored. The first entity of the chunk is stored at index 0 of all four of the arrays, the second at index 1, the third at index 2, *etc.* If the chunk has, say, 100 stored entities but we remove the entity at index 37, the entities at indexes 38 and above all get moved down a slot.
 
+![chunk layout](./ecs slides.png)
+
 What this chunk layout allows us to do very efficiently is loop over a set of component types for all entities. For example, to loop over all entities with component types A and B:
 
 ```csharp
