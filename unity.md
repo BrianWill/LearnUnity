@@ -39,3 +39,19 @@ I'd rather understand than memorize
 
 
 instead of just leaving things for students to figure out on their own, lay it out for them
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// if we lookup entities by id, aren't we losing the linear memory benefits?
+https://github.com/Unity-Technologies/EntityComponentSystemSamples/blob/master/Samples/Assets/GameCode/Samples.Common/SimpleMovement/PositionConstraintSystem.cs
