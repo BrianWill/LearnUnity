@@ -65,6 +65,8 @@ For example, say a chunk stores entities of the archetype made up of component t
 
 So this chunk is divided into four logical arrays, each *maxEntities* in size: one array for the id's, followed by three arrays, one for each of the component types. The chunk also, of course, stores the offsets to these arrays and the count of entities currently stored. The first entity of the chunk is stored at index 0 of all four of the arrays, the second at index 1, the third at index 2, *etc.* If the chunk has, say, 100 stored entities but we remove the entity at index 37, the entities at indexes 38 and above all get moved down a slot.
 
+![chunk layout](ecs%20slides.png?raw=true)
+
 What this chunk layout allows us to do very efficiently is loop over a set of component types for all entities. For example, to loop over all entities with component types A and B:
 
 ```csharp
@@ -77,6 +79,8 @@ for (all chunks of archetypes including A and B)
 ```
 
 This explains why the components are stored in their own arrays: for a chunk with archetype, say, ABCDEFG, we often only want to loop through a subset of the components, like A and B, rather than through all of them. If instead components of a single entity were packed together, looping through a subset of the components would require wastefully accessing the memory of other components.
+
+![chunk traversal](ecs%20slides3.png?raw=true)
 
 The entity manager needs to keep track of which ids are in use and also needs sometimes to quickly lookup entities by id. So aside from the chunks, an EntityManager also stores an array of EntityData structs:
 
@@ -103,6 +107,8 @@ Not all slots in the EntityData array denote living entities because:
 2. the array length exceeds the number of created entities (except in the rare case where the number of created entities *exactly* matches the length of the array)
 
 A free slot is denoted by the Chunk field being null. The EntityManager keeps track of the first free slot in the array, and a free slot's IndexInChunk field is repurposed to store the index of the next free slot. When new entities are created, they are created in the first free slots, which are quickly found by following this chain of indexes.
+
+![entitydata array](ecs%20slides2.png?raw=true)
 
 But what if an entity is destroyed and then its id reused for a subsequently created entity? How do we avoid confusing the new entity for the old? Well in truth, an entity's id is *really* a combination of its index in the EntityData array *and* its Version. The Version fields are all initialized to 1, and when an entity is destroyed, its Version is incremented. To reference an entity, we need not just its index but also its version so as to make sure our referenced entity still exists: if we lookup an entity by index but the version is greater than in our reference, that means the entity we're referencing no longer exists.
 
