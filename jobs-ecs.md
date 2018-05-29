@@ -1,7 +1,7 @@
 Unity version 2018.1 introduces a few major new features for achieving high performance:
 
  - The **Job System** farms units of work called 'jobs' out to threads while helping us avoid race conditions.
- - The **Burst compiler** optimizes code using [SIMD instructions](https://en.wikipedia.org/wiki/SIMD), which are particularly beneficial for math-heavy code. The Burst compiler is not a general-purpose C# compiler: it only works on Job System code written in a subset of C# called HPC# (High Performance C#).
+ - The **Burst compiler** optimizes code using [SIMD instructions](https://en.wikipedia.org/wiki/SIMD), which are particularly beneficial for math-heavy code. The Burst compiler is not a general-purpose C# compiler: it only works on job code, which is written in a subset of C# called HPC# (High Performance C#).
  - **ECS (Entity Component System)** is an architectural pattern in which we lay out data in native (non-garbage collected) memory in the optimal, linear fashion: tightly packed, contiguous, and accessible in sequence. By separating code from data, ECS not only improves performance, it (arguably) improves code structure over the traditional Object-Oriented approach.
 
 ECS and the Job System can be used separately, but they are highly complementary: ECS guarantees data is layed out linearly in memory, which speeds up job code accessing the data and gives the Burst compiler more optimization opportunities.
@@ -14,7 +14,7 @@ In ECS, an ***entity*** is just a unique ID number, and ***components*** are str
 
 - An IComponentData struct can have methods, but Unity itself will not call them.
 - A single entity can have any number of associated components but only one component of any particular type. An entity's set of component types is called its ***archetype***. Like the cloumns of a relational table, there is no sense of order amongst the component types of an archetype: given component types A, B, and C, then ABC, ACB, BAC, BCA, CAB, and CBA all describe the same archetype.
-- An IComponentData struct should generally be very small, and it should not store references. Large data, like textures and meshes, should not be stored in components.
+- An IComponentData struct should generally be very small (under 100 bytes, let's say), and it should not store references. Large data, like textures and meshes, should not be stored in components.
 - Unlike GameObjects, entities cannot have parents or children.
 
 A ***system*** is a class inheriting from **ComponentSystem**, whose methods *OnUpdate()*, *OnCreateManager()*, and *OnDestroyManager()* are called in the system event loop. It's common in system updates to access many hundreds or thousands of entities rather than just one or a few.
@@ -233,8 +233,6 @@ Contradictory orderings, such as A-before-B but B-before-A, trigger runtime erro
 
 #### EntityManager
 
-Static methods of EntityManager allow 
-
 ```csharp
 World world = World.Active;  // the default World
 EntityManager em = world.GetOrCreateManager<EntityManager>();
@@ -308,9 +306,10 @@ public MySystem : ComponentSystem
     }
 ```
 
+[subtractive]
+[SetFilter]
 
-filter 
-
+[disadvantage to injection? can i get reference to the componentgroup so as to set filters?]
 
 #### EntityCommandBuffer
 
@@ -326,21 +325,63 @@ A ComponentSystem has an EntityCommandBuffer field called *PostUpdateCommands*. 
 
 EntityCommandBuffer's methods correspond to EntityManager's methods: *CreateEntity()*, *AddComponent()*, *SetComponent()*, *etc.*
 
-### injection API
 
+### injection
 
+Rather than explicitly create a component group, we can use the Inject attribute to get the same iterators through injection. We can also inject other systems, which is useful for accessing their fields:
 
+```csharp
+public MySystem : ComponentSystem
 
-can inject one system into another (why? so as to share fields?)
+    public struct MyGroup
+    {
+        EntityArray Entities;
+        ComponentDataArray<FooComponent> Foos;
+        ComponentDataArray<BarComponent> Bars;
+        public int Length;
+    }
 
+    [Inject]
+    private MyGroup group;   // creates iterators from ComponentGroup implied by struct fields
 
+    [Inject]
+    private OtherSystem otherSystem;    // useful for accesing fields of OtherSystem
+    
+    protected override void OnUpdate()
+    {
+        // the iterators are created for us before every OnUpdate
+        for (int i = 0; i != group.Length; i++) 
+        {
+            Entity e = group.Entities[i];
+            FooComponent f = group.Foos[i];
+            BarComponent b = group.Bars[i];
+            // ...
+        }
+    }
+```
 
 ### hybrid API
 
-The GameObjectEntity class is a MonoBehavior
+We can add IComponentData struct values to GameObjects by making a MonoBehavior wrapper by inheriting from ComponentDataWrapper:
 
+```csharp
+// a normal component struct
+public struct MyComponent : IComponentData
+{
+    public float val;
+}
 
-### [questions]
+// Instances of this wrapper can be added to GameObjects.
+// The public fields of the wrapped struct are exposed to the inspector.
+public class MyComponentWrapper : ComponentDataWrapper<MyComponent>
+{}
+```
+
+We can also create an entity that mirrors a GameObject by adding a GameObjectEntity component to the GameObject.
+
+[is the entity and gameobject coordinated in any way, or are they just separate representations of the same data? give example]
+
+### [misc. questions]
 
 [is an effort made to avoid fragmentation from too many non-full chunks of a given archetype?]
 
@@ -349,10 +390,9 @@ does EntityManager have static versions of CreateEntity(), AddComponent(), etc.?
 how to create worlds and copy entities between?
 
 
+how much should we lean on native containers?
 
-how much to lean on native containers?
-
-only blitable types in components, but shouldn't a native container be blitable? it's not managed memory, so is the error message just misleading?
+only blitable types in components, but shouldn't a native container be blitable? it's not managed memory, so...
 
 when is it ok to store entity references? doesn't looking up entities by id in our loop nullify linear memory benefits?
 
@@ -365,12 +405,16 @@ ExclusiveEntityTransaction
 
  MoveEntitiesFrom
 
- injection
 
-    
+
 
 ## the Job System
 
+Unity creates a thread for every core in your system: one core runs the main thread, another runs the graphics thread, and the rest run worker threads. The main thread runs our MonoBehavior and coroutine code, and the worker threads are utilized by various parts of the engine.
+
+Like in any C# code, we can do multi-threading by creating and managing our own threads, but this is not only error prone, the additional threads wastefully contend for CPU time with Unity's own threads. Instead, we can use the new Job System to run C# jobs within Unity's own threads.
+
+(The Job System helps maximizes CPU utilization, but it is not appropriate for I/O tasks.)
 
  ## the Burst compiler
 
