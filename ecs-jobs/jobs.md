@@ -23,7 +23,6 @@ public struct MyJob : IJob
     public float a;                  // a blittable type
     public NativeArray<float> b;     // a native container
     
-
     // IJob's single required method
     public void Execute()
     {
@@ -38,18 +37,16 @@ public struct MyJob : IJob
 
 
 // ...somewhere in the main thread
-
-// create an instance, set up its data, 
-// and schedule the job
+// create a job instance and set up its data
 MyJob job = new MyJob();
 job.a = 5.0f; 
-// a native array of one float which must 
-// be disposed within 4 frames
+
+// a native array of one float which must be disposed within 4 frames
 job.b = new NativeArray<float>(1, Allocator.TempJob);
 job.b[0] = 3.0f;
 
 JobHandle h = job.Schedule();       // add job to the queue (will not execute yet)
-JobHandle.ScheduleBatchedJobs();    // begin execution of queued jobs
+JobHandle.ScheduleBatchedJobs();    // begin execution of all queued jobs
 
 
 //...later in the main thread
@@ -59,7 +56,7 @@ val = job.a;                // 5.0f (job.a was unchanged by the job!)
 job.b.Dispose();
 ```
 
-A job should only access its own fields and not touch anything outside the job. Because a job runs outside of C#'s usual context, very bad things can happen if a job accesses globals (either directly or indirectly).
+A job should only access its own fields and not touch anything outside the job. Because jobs may run in native threads rather than normal C# threads, bad things can happen if jobs access globals (either directly or indirectly).
 
 When a job executes, it is accessing a *copy* of the struct, not the very same value we created on the main thread. Consequently, **changes to the fields within the job are *not* accessible outside the job**. However, when a NativeContainer struct is copied, the copy points to the same native allocated memory, and so **changes in a NativeContainer *are* accessible outside the job**. In the above example, we want to produce one piece of data from the job, so we give it a NativeArray of length one and store the value to return in the array's single slot.
 
@@ -67,7 +64,7 @@ The iterators we get from ComponentGroups (ComponentDataArray, EntityArray, *et 
 
 A job might finish before *Complete()* is called, but calling *Complete()* removes the Job System's internal references to the job and allows the main thread to procede knowing that a job is totally finished. Every job should be completed at some point to avoid a resource leak and to create a sync point past which the job is guaranteed to be done.
 
-Only the main thread can schedule and complete jobs (for reasons explained [here](https://github.com/Unity-Technologies/EntityComponentSystemSamples/blob/master/Documentation/content/scheduling_a_job_from_a_job.md)). We usually want the main thread to do more business while jobs run on worker threads, so we usually delay calling *Complete()* on a job until we actually need the job completed (which most commonly is at the end of the current frame or at the beginning of the next frame).
+Only the main thread can schedule and complete jobs (for reasons explained [here](https://github.com/Unity-Technologies/EntityComponentSystemSamples/blob/master/Documentation/content/scheduling_a_job_from_a_job.md)). We usually want the main thread to do business while jobs run on worker threads, so we usually delay calling *Complete()* on a job until we actually need the job completed (which most commonly is at the end of the current frame or at the beginning of the next frame).
 
 To complete multiple jobs but still allow them to execute in parallel, we can use *JobHandle.CompleteAll()*, which takes two or three job handles or a NativeArray\<JobHandle\>:
 
@@ -252,28 +249,53 @@ h.Complete();
 job.x[0] = 5.0f;     
 ```
 
+The entity component iterators (ComponentDataArray, EntityArray, *etc.*) have similar safety checks:
+
+```csharp
+// assume jobs A and B reference the same ComponentDataArray
+JobHandle a = jobA.Schedule();
+JobHandle b = jobB.Schedule();     // exception!
+```
+
+...but because two separate iterators can access the same entity components in memory, the checks are more thorough:
+
+```csharp
+// assume jobs A and B reference separate ComponentDataArrays which 
+// access the same components in memory
+JobHandle a = jobA.Schedule();
+JobHandle b = jobB.Schedule();     // exception!
+```
+
 #### JobComponentSystem
 
-When two jobs access the same entity components, we want to ensure their scheduling does not overlap. Enter **JobComponentSystem**, which is like a ComponentSystem, but its *OnUpdate()* method receives a job handle and returns a job handle.
+A **JobComponentSystem** is like a ComponentSystem but helps us create jobs with appropriate dependencies that avoid entity component access conflicts. Unlike a normal ComponentSystem, its *OnUpdate()* method receives a job handle and returns a job handle:
 
-Immediately after each JobComponentSystem's *OnUpdate()* returns, *JobHandle.ScheduleBatchedJobs()* is called, thus starting execution of any jobs scheduled in the *OnUpdate()*.
+1. Immediately after each JobComponentSystem's *OnUpdate()* returns, *JobHandle.ScheduleBatchedJobs()* is called, thus starting execution of any jobs scheduled in the *OnUpdate()*.
+2. At the end of the frame, *Complete()* is called on every JobHandle returned by the *OnUpdate()* calls. (Therefore JobComponentSystems are not meant for creating jobs that span multiple frames.)
+3. The Job System is aware of which ComponentSystems access which ComponentGroups by virtue of each ComponentSystem's *GetComponentGroup()* calls. The job handle passed to *OnUpdate()* combines the job handles returned by the other JobComponentSystems updated previously in the frame which have ComponentGroup access that conflicts with the current JobComponentSystem.
 
-At the end of the frame, *Complete()* is called on every JobHandle returned by the *OnUpdate()* calls. (Thus JobComponentSystems are not meant for creating jobs that span multiple frames.)
+For example, say we have JobComponentSystems A, B, C, D, and E, updated in that order. If E's ComponentGroups conflict with A and D's ComponentGroups, then the JobHandle passed to the *OnUpdate()* of E will combine the JobHandles returned by A and D, such that E's jobs can depend upon A and D's.
 
-The Job System is aware of which ComponentSystems access which ComponentGroups by virtue of each ComponentSystem's *GetComponentGroup()* calls. The job handle passed to *OnUpdate()* combines the job handles returned by the other JobComponentSystems updated previously in the frame which have ComponentGroup access that conflicts with the current JobComponentSystem.
+The sum effect is that, if all jobs created in every JobComponentSystem:
 
-For example, say we have JobComponentSystems A, B, C, D, and E, updated in that order. If A and D's ComponentGroups conflict with E's ComponentGroups, then the JobHandle passed to the *OnUpdate()* of E will combine the JobHandles returned by A and D.
+1. ...only use entity-component iterators from their JobComponentSystem's own ComponentGroups
+2. ...*and* use their *OnUpdate()*'s input JobHandle as a dependency (direct or indirect)
+3. ...*and* are themselves dependencies of their *OnUpdate()*'s returned JobHandle (or *are* the returned JobHandle itself) 
 
-The sum effect is that, if all jobs created in a JobComponentSystem:
+...then all jobs created within each JobComponentSystem will avoid component access conflicts with the jobs created in all other JobComponentSystems.
 
-1. ...only use entity-component iterators from the JobComponentSystem's own ComponentGroups
-2. ...*and* have the *OnUpdate()*'s input JobHandle as a dependency (direct or indirect)
-3. ...*and* are dependencies of the *OnUpdate()*'s returned JobHandle (or *are* the returned JobHandle itself) 
+For the jobs created *within* a single JobComponentSystem, the editor runtime safety checks will detect when two scheduled jobs conflict in their component access, but it is our responsibility to manually resolve these conflicts by making one job the dependency of the other.
 
-...then all jobs created within a frame by the JobComponentSystems will avoid component access conflicts between the JobComponentSystems.
+If jobs created in two separate JobComponentSystems conflict, we should specify which *OnUpdate()* should run first with the *UpdateBefore* and *UpdateAfter* attributes. For example, if the jobs of JobComponentSystem A should mutate components before they are read in the jobs of JobComponentSystem B, then we should specify that A must update before B.
 
-For the jobs created *within* a single JobComponentSystem, we resolve component access conflicts by making one of two conflicting jobs the dependency of the other.
+Nothing stops us from creating jobs in a JobComponentSystem's *OnUpdate()* which do not depend upon the input JobHandle and which are not themselves dependencies of the returned JobHandle&mdash;but doing so generally defeats the purpose of a JobComponentSystem.
 
-If jobs created in two different JobComponentSystems conflict, we should specify which *OnUpdate()* should run first with the *UpdateBefore* and *UpdateAfter* attributes. For example, if the jobs of JobComponentSystem A should mutate components before they are read in the jobs of JobComponentSystem B, then we should specify that A must update before B.
 
-Nothing stops us from creating jobs in a JobComponentSystem *OnUpdate()* which do not depend upon the input JobHandle and which are not themselves dependencies of the returned JobHandle&mdash;but doing so generally defeats the purpose of a JobComponentSystem.
+
+### todo
+
+using EntityCommandBuffers in jobs
+
+barriers
+
+what about multi-frame jobs accessing components? possible? bad idea?
