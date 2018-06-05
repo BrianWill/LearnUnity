@@ -9,9 +9,9 @@ In ECS, an ***entity*** is just a unique ID number, and ***components*** are str
 - An IComponentData struct should generally be very small (under 100 bytes, let's say), and it should not store references. Large data, like textures and meshes, should not be stored in components.
 - Unlike GameObjects, entities cannot have parents or children.
 
-A ***system*** is a class inheriting from **ComponentSystem**, whose methods *OnUpdate()*, *OnCreateManager()*, and *OnDestroyManager()* are called in the system event loop. It's common in a system's *OnUPdate()* to access many hundreds or thousands of entities rather than just one or a few.
+A ***system*** is a class inheriting from **ComponentSystem**, whose methods *OnUpdate()*, *OnCreateManager()*, and *OnDestroyManager()* are called in the system event loop. It's common in a system's *OnUpdate()* to access many hundreds or thousands of entities rather than just one or a few.
 
-A **World** stores an EntityManager instance and a set of ComponentSystem instances. Each EntityManager has its own set of entities, so the entities of one World are separate from any other World, and the systems of a World only access entities of that World. A common reason to have more than one world is to separate simulation from presentation, which is particularly useful for networked games because it separates client-only concerns from server concerns. In cases where multiple Worlds need the same ComponentSystem, we give each World its own instance; a ComponentSystem used by just one World usually has just one instance.
+A **World** stores an EntityManager instance and a set of ComponentSystem instances. Each EntityManager has its own set of entities, so the entities of one World are separate from any other World, and the systems of a World only access entities of that World. A common reason to have more than one world is to separate simulation from presentation, which is particularly useful for networked games because it separates client-only concerns from server concerns. In cases where multiple Worlds need the same ComponentSystem, we give each World its own instance; a ComponentSystem used by just one World would be instantiated only once.
 
 ### pure ECS vs. hybrid ECS
 
@@ -123,7 +123,7 @@ Because the EntityData array stores the indexes of the entities within the chunk
 
 ### shared components
 
-For some components whose values frequently reoccur among entities, we'd like to avoid storing those values repeatedly in memory. The ISharedComponentData interface does just that: entities of the same archetype which have equal values of an ISharedComponentData type all share that value in memory rather than each having its own copy.
+For some components whose values frequently reoccur among entities, we'd like to avoid storing those values repeatedly in memory. The ISharedComponentData interface does just that: entities of the same archetype which have equal values of an ISharedComponentData type all share that value in memory rather than have their own separate copies.
 
 A chunk stores only one shared component value of a particular type, and so setting a shared component value on an entity usually requires moving the entity to another chunk. Say two entities in a chunk share a FooSharedComponent value: if we set a new FooSharedComponent value on one entity, the other entity still has the old value, and the two values cannot both exist in the same chunk, so the modified entity is moved to a new chunk.
 
