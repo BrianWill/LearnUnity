@@ -56,7 +56,7 @@ val = job.a;                // 5.0f (job.a was unchanged by the job!)
 job.b.Dispose();
 ```
 
-A job should only access its own fields and not touch anything outside the job. Because jobs may run in native threads rather than normal C# threads, bad things can happen if jobs access globals (either directly or indirectly).
+A job should only access its own fields and not touch anything outside the job. Because jobs may run in native threads rather than normal C# threads, bad things can happen if jobs access managed globals (either directly or indirectly).
 
 When a job executes, it is accessing a *copy* of the struct, not the very same value we created on the main thread. Consequently, **changes to the fields within the job are *not* accessible outside the job**. However, when a NativeContainer struct is copied, the copy points to the same native allocated memory, and so **changes in a NativeContainer *are* accessible outside the job**. In the above example, we want to produce one piece of data from the job, so we give it a NativeArray of length one and store the value to return in the array's single slot.
 
@@ -66,7 +66,7 @@ A job might finish before *Complete()* is called, but calling *Complete()* remov
 
 Only the main thread can schedule and complete jobs (for reasons explained [here](https://github.com/Unity-Technologies/EntityComponentSystemSamples/blob/master/Documentation/content/scheduling_a_job_from_a_job.md)). We usually want the main thread to do business while jobs run on worker threads, so we usually delay calling *Complete()* on a job until we actually need the job completed (which most commonly is at the end of the current frame or at the beginning of the next frame).
 
-To complete multiple jobs but still allow them to execute in parallel, we can use *JobHandle.CompleteAll()*, which takes two or three job handles or a NativeArray\<JobHandle\>:
+To complete multiple jobs but allow them to complete in no particular order, we can use *JobHandle.CompleteAll()*, which takes two or three job handles or a NativeArray\<JobHandle\>:
 
 ```csharp
 JobHandle a = jobA.Schedule();
@@ -74,11 +74,11 @@ JobHandle b = jobB.Schedule();
 JobHandle c = jobC.Schedule();
 
 // Wait for A, B, and C to complete.
-// A, B, and C may run in parallel.
+// A, B, and C may complete in parallel and in any order.
 JobHandle.CompleteAll(a, b, c);
 ```
 
-If we want job A to complete before job B starts running, we make A a dependency of B by passing job A's handle when scheduling B:
+If we want job A to complete before job B starts running, we make A a dependency of B by passing A's handle when scheduling B:
 
 ```csharp
 // B will not run until after A completes
@@ -112,7 +112,7 @@ When the main thread calls *Complete()*, one or more of the jobs to complete may
 
 #### IJobParallelFor
 
-A ParallelFor job is automatically split behind-the-scenes into multiple actual jobs that can run in parallel, each processing its own range of indexes, *e.g.* one job handles indexes 0-99, another handles 100-199, another 200-299, *etc.*
+A ParallelFor job is automatically split behind-the-scenes into multiple actual jobs that can run in parallel, each processing its own range of indexes, *e.g.* one job processes indexes 0 through 99, another processes 100 through 199, another 200 through 299, *etc.*
 
 ```csharp
 public struct MyParallelJob : IJobParallelFor
@@ -152,7 +152,7 @@ job.b.Dispose();
 
 Above, the job calls *Execute()* 1000 times, with *i* starting at 0 and incrementing for each other call. The calls are batched into logical jobs that each make 64 calls (except for one batch which makes 40 calls, because 1000 divided by 64 has a remainder of 40). These logical jobs don't have their own handles, but they run as their own units of work and so can run in parallel. (The overhead of 1000 calls is avoided by the compiler inlining the *Execute()* call in each batch loop.)
 
-The larger the batch size, the fewer the logical jobs and so the less overhead, but the fewer opportunities for parallel execution. In general, 32 or 64 is a good batch size when each *Execute()* does very little, and 1 is a good batch size when each *Execute()* does a significant chunk of work.
+The larger the batch size, the fewer the queued jobs and so the less overhead, but the fewer opportunities for parallel execution. In general, 32 or 64 is a good batch size when each *Execute()* does very little, and 1 is a good batch size when each *Execute()* does a significant chunk of work.
 
 
 ### safety checks
@@ -180,7 +180,7 @@ JobHandle b = jobB.Schedule();     // exception!
 ```csharp
 // assume jobs A and B reference the same NativeContainer
 JobHandle a = jobA.Schedule();
-handleA.Complete();  
+a.Complete();  
 
 // no possible conflict, so no exception
 JobHandle b = jobB.Schedule();      // OK
@@ -189,10 +189,10 @@ JobHandle b = jobB.Schedule();      // OK
 
 ```csharp
 // assume jobs A and B reference the same NativeContainer
-JobHandle handleA = jobA.Schedule();
+JobHandle a = jobA.Schedule();
 
 // B will wait for A to complete, so no possible conflict
-JobHandle handleB = jobB.Schedule(handleA);    // OK
+JobHandle b = jobB.Schedule(a);    // OK
 ```
 
 If two jobs have the same container marked as \[ReadOnly\], there is no conflict from their concurrent access:
@@ -240,13 +240,11 @@ MyJob job = new MyJob();
 job.x = new NativeArray<float>(10, Allocator.TempJob);
 JobHandle h = job.Schedule();
 
-// exception! conflict with the container's use in a scheduled job       
-job.x[0] = 5.0f;
+job.x[0] = 5.0f;   // exception! conflict with the container's use in a scheduled job   
 
 h.Complete();       
 
-// OK to touch the container after the job's completion
-job.x[0] = 5.0f;     
+job.x[0] = 5.0f;   // OK to touch the container after the job's completion
 ```
 
 The entity component iterators (ComponentDataArray, EntityArray, *etc.*) have similar safety checks:
@@ -257,7 +255,7 @@ JobHandle a = jobA.Schedule();
 JobHandle b = jobB.Schedule();     // exception!
 ```
 
-...but because two separate iterators can access the same entity components in memory, the checks are more thorough:
+...but because two separate iterators can access the same entity components in memory, the checks are more thorough, detecting conflicts between separate iterators:
 
 ```csharp
 // assume jobs A and B reference separate ComponentDataArrays which 
@@ -268,7 +266,7 @@ JobHandle b = jobB.Schedule();     // exception!
 
 #### JobComponentSystem
 
-A **JobComponentSystem** is like a ComponentSystem but helps us create jobs with appropriate dependencies that avoid entity component access conflicts. Unlike a normal ComponentSystem, its *OnUpdate()* method receives a job handle and returns a job handle:
+A **JobComponentSystem** is like a ComponentSystem but helps us create jobs with appropriate dependencies that avoid entity component access conflicts. Unlike in a normal ComponentSystem, the *OnUpdate()* method receives a job handle and returns a job handle:
 
 1. Immediately after each JobComponentSystem's *OnUpdate()* returns, *JobHandle.ScheduleBatchedJobs()* is called, thus starting execution of any jobs scheduled in the *OnUpdate()*.
 2. At the end of the frame, *Complete()* is called on every JobHandle returned by the *OnUpdate()* calls. (Therefore JobComponentSystems are not meant for creating jobs that span multiple frames.)

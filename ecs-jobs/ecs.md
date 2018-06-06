@@ -5,8 +5,8 @@ In Unity's traditional programming model, an instance of the GameObject class is
 In ECS, an ***entity*** is just a unique ID number, and ***components*** are structs implementing the **IComponentData** interface (which has no required methods): 
 
 - An IComponentData struct can have methods, but Unity itself will not call them.
-- A single entity can have any number of associated components but only one component of any particular type. An entity's set of component types is called its ***archetype***. Like the cloumns of a relational table, there is no sense of order amongst the component types of an archetype: given component types A, B, and C, then ABC, ACB, BAC, BCA, CAB, and CBA all describe the same archetype.
-- An IComponentData struct should generally be very small (under 100 bytes, let's say), and it should not store references. Large data, like textures and meshes, should not be stored in components.
+- A single entity can have any number of associated components but only one component of any particular type. An entity's set of component types is called its ***archetype***. Like the columns of a relational table, there is no sense of order amongst the component types of an archetype: given component types A, B, and C, then ABC, ACB, BAC, BCA, CAB, and CBA all describe the same archetype.
+- An IComponentData struct should generally be very small (under 100 bytes, typically), and it should not store references. Large data, like textures and meshes, should not be stored in components.
 - Unlike GameObjects, entities cannot have parents or children.
 
 A ***system*** is a class inheriting from **ComponentSystem**, whose methods *OnUpdate()*, *OnCreateManager()*, and *OnDestroyManager()* are called in the system event loop. It's common in a system's *OnUpdate()* to access many hundreds or thousands of entities rather than just one or a few.
@@ -34,16 +34,14 @@ The provided native container types are:
 
 You can implement your own native containers as described [here](https://github.com/Unity-Technologies/EntityComponentSystemSamples/blob/master/Documentation/content/custom_job_types.md#custom-nativecontainers).
 
-Because they're not blitable, native containers cannot be stored in components (and besides, we shouldn't store large data in components). Instead, long-lived native containers are generally stored in the systems themselves.
-
-[why are NativeContainers not blitable?]
+Because they're not blittable, native containers cannot be stored in components (and besides, we shouldn't store large data in components). Instead, long-lived native containers are generally stored in the systems themselves.
 
 As we'll see with the Job System, the native containers have runtime thread-safety checks enabled in the editor which catch improper concurrent access.
 
 When creating a native container, we specify one of three allocators from which to allocate its memory:
 
 - **Allocator.Temp**: fastest allocation. Temp allocations should not live longer than the frame, and so you should generally dispose of a Temp native container in the same method call in which it's created.
-- **Allocator.TempJob**: slower allocation. The safety checks throw an exception if a TempJob allocation lives longer than 4 frames.
+- **Allocator.TempJob**: slower allocation. Safety checks throw an exception if a TempJob allocation lives longer than 4 frames.
 - **Allocator.Persistent**: slowest allocation (basically just a wrapper for malloc). Lives indefinitely.
 
 Example:
@@ -72,7 +70,7 @@ So this chunk is divided into four logical arrays, each *maxEntities* in size: o
 
 ![chunk layout](ecs%20slides.png?raw=true)
 
-What this chunk layout allows us to do very efficiently is loop over a set of component types for all entities. For example, to loop over all entities with component types A and B:
+This chunk layout allows us to very efficiently loop over a set of component types for all entities. For example, to loop over all entities with component types A and B:
 
 ```csharp
 // pseudocode
@@ -83,7 +81,7 @@ for (all chunks of the archetypes that include A and B)
         var b = chunk.B[i]
 ```
 
-This explains why the components are stored in their own arrays: for a chunk with archetype, say, ABCDEFG, we often only want to loop through a subset of the components, like A and B, rather than through all of them. If instead components of a single entity were packed together, looping through a subset of the components would require wastefully accessing the memory of other components.
+This explains why the components are stored in their own arrays: for a chunk with archetype, say, ABCDEFG, we often only want to loop through a subset of the components, like A and B, rather than through all of them. If, instead, components of a single entity were packed together, looping through a subset of the components would require wastefully accessing the memory of the other components we don't care about.
 
 ![chunk traversal](ecs%20slides3.png?raw=true)
 
@@ -129,7 +127,7 @@ A chunk stores only one shared component value of a particular type, and so sett
 
 The entity manager hashes shared component values to keep track of which chunks store which shared values. (We wouldn't want multiple chunks to needlessly store the same shared component values and thereby excessively fragment our entities across chunks.)
 
-Unlike regular components, shared components need not be blitable and so can store references into native and managed memory.
+Unlike regular components, shared components need not be blittable and so can store references into native and managed memory.
 
 Shared components are most appropriate for component types which are mutated infrequently and which have the same values across many entities. For example, a component consisting of a single enum field is a good candidate for a shared component because many entities typically would share the same enum values.
 
@@ -157,20 +155,20 @@ An obvious issue with this arrangement is that common queries like *'Does this c
 struct MyComponent : IComponentData {
     public float A;
     public byte B;
-    public MyStruct C;   // must be a struct with only blitable fields
+    public MyStruct C;   // must be a struct with only blittable fields
 }
 ```
 
 Because we usually don't give the components methods or properties, it generally doesn't make sense to make any field non-public.
 
-The fields must be [blitable types](https://docs.microsoft.com/en-us/dotnet/framework/interop/blittable-and-non-blittable-types).
+The fields must be [blittable types](https://docs.microsoft.com/en-us/dotnet/framework/interop/blittable-and-non-blittable-types).
 
 #### ISharedComponentData
 
 ```csharp
 public struct MySharedComponent : ISharedComponentData 
 {
-    public string A;             // field types needn't be blitable
+    public string A;             // field types needn't be blittable
     public NativeArray<int> B;   // OK for native containers
     public Mesh C;               // OK for storing large data
 }
@@ -232,7 +230,7 @@ public class MySystem: ComponentSystem
 }
 ```
 
-Contradictory orderings, such as A-before-B but B-before-A, trigger runtime errors.
+Contradictory orderings, such as A-before-B while also B-before-A, trigger runtime errors.
 
 #### EntityManager
 
@@ -365,7 +363,7 @@ public MySystem : ComponentSystem
 
 ### hybrid API
 
-We can add IComponentData struct values to GameObjects by making a MonoBehavior wrapper by inheriting from ComponentDataWrapper:
+We can add IComponentData struct values to GameObjects by making a MonoBehavior that inherits from ComponentDataWrapper:
 
 ```csharp
 // a normal component struct
@@ -384,7 +382,7 @@ We can also create an entity that mirrors a GameObject by adding a GameObjectEnt
 
 [is the entity and gameobject coordinated in any way, or are they just separate representations of the same data? give example]
 
-### [misc. questions]
+### todo
 
 [is an effort made to avoid fragmentation from too many non-full chunks of a given archetype?]
 
@@ -395,17 +393,17 @@ how to create worlds and copy entities between?
 
 how much should we lean on native containers?
 
-only blitable types in components, but shouldn't a native container be blitable? it's not managed memory, so...
+only blittable types in components, but shouldn't a native container be blittable? it's not managed memory, so...
 
 when is it ok to store entity references? doesn't looking up entities by id in our loop nullify linear memory benefits?
 
 
 
 
-[can't have booleans because they're not blitable, instead use enum of struct of byte?]
+[can't have booleans because they're not blittable, instead use enum of struct of byte?]
 
 ExclusiveEntityTransaction
 
  MoveEntitiesFrom
 
-
+[why are NativeContainers not blittable?]
