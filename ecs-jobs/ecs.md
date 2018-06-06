@@ -6,7 +6,7 @@ In ECS, an ***entity*** is just a unique ID number, and ***components*** are str
 
 - An IComponentData struct can have methods, but Unity itself will not call them.
 - A single entity can have any number of associated components but only one component of any particular type. An entity's set of component types is called its ***archetype***. Like the columns of a relational table, there is no sense of order amongst the component types of an archetype: given component types A, B, and C, then ABC, ACB, BAC, BCA, CAB, and CBA all describe the same archetype.
-- The fields of an IComponentData struct must be [blittable types](https://en.wikipedia.org/wiki/Blittable_types) (reference types are not blittable!) or NativeContainer types (explained later).
+- The fields of an IComponentData struct must be [blittable types](https://en.wikipedia.org/wiki/Blittable_types) (reference types are not blittable!).
 - An IComponentData struct should generally be very small (under 100 bytes, typically). Large data, like textures and meshes, should only be stored in ISharedComponent structs (explained later).
 - Unlike GameObjects, entities cannot have parents or children.
 
@@ -35,7 +35,7 @@ The provided native container types are:
 
 You can implement your own native containers as described [here](https://github.com/Unity-Technologies/EntityComponentSystemSamples/blob/master/Documentation/content/custom_job_types.md#custom-nativecontainers).
 
-Because they're not blittable, native containers cannot be stored in components (and besides, we shouldn't store large data in components). Instead, long-lived native containers are generally stored in the systems themselves.
+Because they're not blittable, native containers cannot be stored in components. Instead, long-lived native containers are generally stored in the systems themselves.
 
 As we'll see with the Job System, the native containers have runtime thread-safety checks enabled in the editor which catch improper concurrent access.
 
