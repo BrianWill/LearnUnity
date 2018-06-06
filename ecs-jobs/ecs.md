@@ -66,7 +66,7 @@ For example, say a chunk stores entities of the archetype made up of component t
     int maxEntities = 16536 / (sizeof(id) + sizeof(A) + sizeof(B) + sizeof(C));
 ```
 
-So this chunk is divided into four logical arrays, each *maxEntities* in size: one array for the id's, one for the A components, one for the B components, and one for the C components. The chunk also, of course, stores the offsets to these arrays and the count of entities currently stored. The first entity of the chunk is stored at index 0 of all four of the arrays, the second at index 1, the third at index 2, *etc.* If the chunk has, say, 100 stored entities but we then remove the entity at index 37, the entities at indexes 38 through 99 all get moved down a slot.
+So this chunk is divided into four logical arrays, each *maxEntities* in size: one array for the id's, one for the A components, one for the B components, and one for the C components. The chunk also, of course, stores the offsets to these arrays and the count of entities currently stored. The first entity of the chunk is stored at index 0 of all four of the arrays, the second at index 1, the third at index 2, *etc.* If the chunk has, say, 100 stored entities but we then remove the entity at index 37, the entity at index 99 will be moved down to index 37.
 
 ![chunk layout](ecs%20slides.png?raw=true)
 
@@ -117,7 +117,7 @@ But what if an entity is destroyed and then its id reused for a subsequently cre
 
 When we create more entities than will fit in the EntityData array, the array is expanded by copying everything to a new, larger array. The array is never shrunk.
 
-Because the EntityData array stores the indexes of the entities within the chunks, these indexes must be updated when entities are moved within/between chunks. (Recall that many entities may get shifted down slots when an entity is removed from a chunk, hence removing entities is one of the costlier operations.)
+Because the EntityData array stores the indexes of the entities within the chunks, these indexes must be updated when entities are moved within/between chunks. (Recall that another entity gets moved down to fill the slot when an entity is removed from a chunk, hence moving entities is one of the costlier operations.)
 
 ### shared components
 
@@ -261,7 +261,7 @@ em.RemoveComponent<MyComponent>(entity);
 // true if the entity exists and has component of type MyComponent
 bool has = em.HasComponent<MyComponent>(entity);
 
-// true if entity exists (false if never existed or if it's been destroyd)
+// true if entity exists
 bool exists = em.Exists(entity);
 
 // create new entity which is copy of existing entity (same components and data, but new id)
@@ -407,3 +407,5 @@ ExclusiveEntityTransaction
  MoveEntitiesFrom
 
 [why are NativeContainers not blittable?]
+
+FixedArrayArray is like a special component type

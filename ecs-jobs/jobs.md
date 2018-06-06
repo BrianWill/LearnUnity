@@ -255,7 +255,7 @@ JobHandle a = jobA.Schedule();
 JobHandle b = jobB.Schedule();     // exception!
 ```
 
-...but because two separate iterators can access the same entity components in memory, the checks are more thorough, detecting conflicts between separate iterators:
+...but because two separate iterators can access the same entity components in memory, the checks are more thorough so as to detect conflicts between separate iterators:
 
 ```csharp
 // assume jobs A and B reference separate ComponentDataArrays which 
@@ -263,6 +263,8 @@ JobHandle b = jobB.Schedule();     // exception!
 JobHandle a = jobA.Schedule();
 JobHandle b = jobB.Schedule();     // exception!
 ```
+
+Additionally, right before a system *OnUpdate()* is called, an exception is thrown if any of the system's ComponentGroups conflict with a scheduled job.
 
 #### JobComponentSystem
 
