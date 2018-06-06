@@ -7,7 +7,7 @@ In ECS, an ***entity*** is just a unique ID number, and ***components*** are str
 - An IComponentData struct can have methods, but Unity itself will not call them.
 - A single entity can have any number of associated components but only one component of any particular type. An entity's set of component types is called its ***archetype***. Like the columns of a relational table, there is no sense of order amongst the component types of an archetype: given component types A, B, and C, then ABC, ACB, BAC, BCA, CAB, and CBA all describe the same archetype.
 - The fields of an IComponentData struct must be [blittable types](https://en.wikipedia.org/wiki/Blittable_types) (reference types are not blittable!) or NativeContainer types (explained later).
-- An IComponentData struct should generally be very small (under 100 bytes, typically). Large data, like textures and meshes, should only be stored in ISharedComponents (explained later).
+- An IComponentData struct should generally be very small (under 100 bytes, typically). Large data, like textures and meshes, should only be stored in ISharedComponent structs (explained later).
 - Unlike GameObjects, entities cannot have parents or children.
 
 A ***system*** is a class inheriting from **ComponentSystem**, whose methods *OnUpdate()*, *OnCreateManager()*, and *OnDestroyManager()* are called in the system event loop. It's common in a system's *OnUpdate()* to access many hundreds or thousands of entities rather than just one or a few.
