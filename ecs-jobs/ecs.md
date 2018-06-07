@@ -124,7 +124,7 @@ Because the EntityData array stores the indexes of the entities within the chunk
 
 For some components whose values frequently reoccur among entities, we'd like to avoid storing those values repeatedly in memory. The ISharedComponentData interface does just that: entities of the same archetype which have equal values of an ISharedComponentData type all share that value in memory rather than have their own separate copies.
 
-A single chunk stores only one value of a particular ISharedComponentData type, and so setting a shared component value on an entity usually requires moving the entity to another chunk. Say two entities in a chunk share a FooSharedComponent value: if we set a new FooSharedComponent value on one entity, the other entity still has the old value, and the two values cannot both exist in the same chunk, so the modified entity is moved to a new chunk.
+A single chunk can store only one value of each ISharedComponentData type, and so setting a shared component value on an entity usually requires moving the entity to another chunk. If we have two entities in the same chunk and set a new shared component value on one of them, the other entity still has the old value, and so the modified entity must be moved to a new chunk.
 
 The entity manager hashes shared component values to keep track of which chunks store which shared values. (We wouldn't want multiple chunks to needlessly store the same shared component values and thereby excessively fragment our entities across chunks.)
 
