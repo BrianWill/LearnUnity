@@ -7,7 +7,7 @@ In ECS, an ***entity*** is just a unique ID number, and ***components*** are str
 - An IComponentData struct can have methods, but Unity itself will not call them.
 - A single entity can have any number of associated components but only one component of any particular type. An entity's set of component types is called its ***archetype***. Like the columns of a relational table, there is no sense of order amongst the component types of an archetype: given component types A, B, and C, then ABC, ACB, BAC, BCA, CAB, and CBA all describe the same archetype.
 - The fields of an IComponentData struct must be [blittable types](https://en.wikipedia.org/wiki/Blittable_types) (reference types are not blittable!).
-- An IComponentData struct should generally be very small (under 100 bytes, typically). Large data, like textures and meshes, should only be stored in ISharedComponent structs (explained later).
+- An IComponentData struct should generally be very small (under 100 bytes, typically). Large data, like textures and meshes, should only be stored in ISharedComponentData structs (explained later).
 - Unlike GameObjects, entities cannot have parents or children.
 
 A ***system*** is a class inheriting from **ComponentSystem**, whose methods *OnUpdate()*, *OnCreateManager()*, and *OnDestroyManager()* are called in the system event loop. It's common in a system's *OnUpdate()* to access many hundreds or thousands of entities rather than just one or a few.
@@ -82,7 +82,7 @@ for (all chunks of the archetypes that include A and B)
         var b = chunk.B[i]
 ```
 
-This explains why the components are stored in their own arrays: for a chunk with archetype, say, ABCDEFG, we often only want to loop through a subset of the components, like A and B, rather than through all of them. If, instead, components of a single entity were packed together, looping through a subset of the components would require wastefully accessing the memory of the other components we don't care about.
+This explains why the components are stored in their own arrays: for a chunk with archetype, say, ABCDEFG, we often only want to loop through a subset of the components, like A and B, rather than through all of them. If components of a single entity were instead packed together, looping through a subset of the components would require wastefully accessing the memory of the other components we don't care about.
 
 ![chunk traversal](ecs%20slides3.png?raw=true)
 
@@ -114,17 +114,17 @@ A free slot is denoted by the Chunk field being null. The EntityManager keeps tr
 
 ![entitydata array](ecs%20slides2.png?raw=true)
 
-But what if an entity is destroyed and then its id reused for a subsequently created entity? How do we avoid confusing the new entity for the old? Well in truth, an entity's id is *really* a combination of its index in the EntityData array *and* its Version. The Version fields are all initialized to 1, and when an entity is destroyed, its Version is incremented. To reference an entity, we need not just its index but also its version so as to make sure our referenced entity still exists: if we lookup an entity by index but the version is greater than in our reference, that means the entity we're referencing no longer exists.
+But what if an entity is destroyed and then its id reused for a subsequently created entity? How do we avoid confusing the new entity for the old? Well in truth, an entity's id is *really* a combination of its index in the EntityData array *and* its Version. The Version fields are all initialized to 1, and when an entity is destroyed, its Version is incremented. To reference an entity, we need not just its index but also its Version so as to make sure our referenced entity still exists: if we lookup an entity by index but the Version is greater than in our reference, that means the entity we're referencing no longer exists.
 
 When we create more entities than will fit in the EntityData array, the array is expanded by copying everything to a new, larger array. The array is never shrunk.
 
-Because the EntityData array stores the indexes of the entities within the chunks, these indexes must be updated when entities are moved within/between chunks. (Recall that another entity gets moved down to fill the slot when an entity is removed from a chunk, hence moving entities is one of the costlier operations.)
+Because the EntityData array stores the indexes of the entities within the chunks, these indexes must be updated when entities are moved within or between chunks. (Recall that another entity gets moved down to fill the slot when an entity is removed from a chunk, hence moving entities is one of the costlier operations.)
 
 ### shared components
 
 For some components whose values frequently reoccur among entities, we'd like to avoid storing those values repeatedly in memory. The ISharedComponentData interface does just that: entities of the same archetype which have equal values of an ISharedComponentData type all share that value in memory rather than have their own separate copies.
 
-A chunk stores only one shared component value of a particular type, and so setting a shared component value on an entity usually requires moving the entity to another chunk. Say two entities in a chunk share a FooSharedComponent value: if we set a new FooSharedComponent value on one entity, the other entity still has the old value, and the two values cannot both exist in the same chunk, so the modified entity is moved to a new chunk.
+A single chunk stores only one value of a particular ISharedComponentData type, and so setting a shared component value on an entity usually requires moving the entity to another chunk. Say two entities in a chunk share a FooSharedComponent value: if we set a new FooSharedComponent value on one entity, the other entity still has the old value, and the two values cannot both exist in the same chunk, so the modified entity is moved to a new chunk.
 
 The entity manager hashes shared component values to keep track of which chunks store which shared values. (We wouldn't want multiple chunks to needlessly store the same shared component values and thereby excessively fragment our entities across chunks.)
 
