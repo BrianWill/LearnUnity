@@ -4,7 +4,7 @@ In Unity's traditional programming model, an instance of the GameObject class is
 
 In ECS, an ***entity*** is just a unique ID number, and ***components*** are structs implementing the **IComponentData** interface (which has no required methods): 
 
-- An IComponentData struct can have methods, but Unity itself will not call them.
+- An IComponentData struct can have methods, but Unity itself will not call them, and the ECS pattern prescribes that we avoid putting logic in our components.
 - A single entity can have any number of associated components but only one component of any particular type. An entity's set of component types is called its ***archetype***. Like the columns of a relational table, there is no sense of order amongst the component types of an archetype: given component types A, B, and C, then ABC, ACB, BAC, BCA, CAB, and CBA all describe the same archetype.
 - The fields of an IComponentData struct must be [blittable types](https://en.wikipedia.org/wiki/Blittable_types) (reference types are not blittable!).
 - An IComponentData struct should generally be very small (under 100 bytes, typically). Large data, like textures and meshes, should only be stored in ISharedComponentData structs (explained later).
@@ -167,7 +167,7 @@ The fields must be [blittable types](https://docs.microsoft.com/en-us/dotnet/fra
 #### ISharedComponentData
 
 ```csharp
-public struct MySharedComponent : ISharedComponentData 
+struct MySharedComponent : ISharedComponentData 
 {
     public string A;             // field types needn't be blittable
     public NativeArray<int> B;   // OK for native containers
@@ -275,8 +275,8 @@ em.DestroyEntity(entity2);
 #### ComponentGroup
 
 ```csharp
-public MySystem : ComponentSystem
-
+public class MySystem : ComponentSystem
+{
     ComponentGroup group;
 
     public void OnCreateManager(int capacity)
@@ -306,6 +306,7 @@ public MySystem : ComponentSystem
             // ...
         }
     }
+}
 ```
 
 [subtractive]
@@ -317,23 +318,45 @@ public MySystem : ComponentSystem
 
 An EntityCommandBuffer queues up EntityManager add/remove/set operations to be performed later. This is useful because:
 
-1. these operations invalidate ComponentGroup iterators
+1. these operations invalidate ComponentGroup iterators, and so we can't otherwise perform these operations while looping through entity components
 2. batching these operations can improve performance
-3. jobs generally should not do these operations directly
+3. jobs cannot do these operations directly
 
-A ComponentSystem has an EntityCommandBuffer field called *PostUpdateCommands*. Operations queued on this buffer during *OnUpdate()* will be applied after every update.
+The EntityCommandBuffer methods are:
 
-[always immediately after? or is it smart about batching buffers from multiple systems?]
+- *CreateEntity()*
+- *RemoveEntity()*
+- *AddComponent()*
+- *SetComponent()*
+- *Flush()* &mdash; enact all the queued commands and dispose of the buffer
 
-EntityCommandBuffer's methods correspond to EntityManager's methods: *CreateEntity()*, *AddComponent()*, *SetComponent()*, *etc.*
+The EntityCommandBuffer methods are not thread safe, so separate threads should use separate EntityCommandBuffers.
 
+A ComponentSystem has an EntityCommandBuffer field called *PostUpdateCommands*. Operations queued on this buffer during *OnUpdate()* will be applied immediatly after the update.
 
-### injection
+#### injecting systems
 
-Rather than explicitly create a component group, we can use the Inject attribute to get the same iterators through injection. We can also inject other systems, which is useful for accessing their fields:
+We can inject systems into other systems, which is useful for accessing their fields:
 
 ```csharp
-public MySystem : ComponentSystem
+public class MySystem : ComponentSystem
+{
+    [Inject]
+    private OtherSystem otherSystem;    // useful for accesing fields of OtherSystem
+
+    protected override void OnUpdate()
+    {
+        // ...
+    }
+]
+```
+
+#### injecting component groups
+
+Rather than explicitly create a component group, we can get the same iterators through injection: 
+
+```csharp
+public class MySystem : ComponentSystem
 
     public struct MyGroup
     {
@@ -345,9 +368,6 @@ public MySystem : ComponentSystem
 
     [Inject]
     private MyGroup group;   // creates iterators from ComponentGroup implied by struct fields
-
-    [Inject]
-    private OtherSystem otherSystem;    // useful for accesing fields of OtherSystem
     
     protected override void OnUpdate()
     {
@@ -361,6 +381,40 @@ public MySystem : ComponentSystem
         }
     }
 ```
+
+#### BarrierSystem
+
+A BarrierSystem is a kind of system whose update cannot be overridden and so a barrier class is always left empty:
+
+```csharp
+[UpdateAfter(typeof(MySystem))]
+class MyBarrier : BarrierSystem
+{
+    // don't put anything in here!
+}
+```
+
+A BarrierSystem's *CreateCommandBuffer()* method returns an EntityCommandBuffer that will be flushed in the barrier's update:
+
+```csharp
+class MySystem : ComponentSystem
+{
+    [Inject]
+    private MyBarrier myBarrier;
+
+    protected override void OnCreateManager(int capacity)
+    {
+        EntityCommandBuffer commands = myBarrier.CreateCommandBuffer();
+        // ... commands will be flushed when MyBarrier updates
+    }
+}
+```
+
+Also, a barrier injected into a JobComponentSystem (described [here](jobs.md#JobComponentSystem)) will complete the job handle returned by that JobComponentSystem's update.
+
+Effectively, a barrier is a coordination point in our system update loop.
+
+The EndFrameBarrier is created for us and updates very last thing in a frame, after all other systems and after rendering. (Actually, EndFrameBarrier is updated as the very *first* thing in a frame, but logically that's the same point.)
 
 ### hybrid API
 
@@ -387,7 +441,7 @@ We can also create an entity that mirrors a GameObject by adding a GameObjectEnt
 
 [is an effort made to avoid fragmentation from too many non-full chunks of a given archetype?]
 
-does EntityManager have static versions of CreateEntity(), AddComponent(), etc.? Examples in docs imply this is case but I see no such methods in the code
+
 
 how to create worlds and copy entities between?
 
@@ -396,7 +450,6 @@ how much should we lean on native containers?
 
 only blittable types in components, but shouldn't a native container be blittable? it's not managed memory, so...
 
-when is it ok to store entity references? doesn't looking up entities by id in our loop nullify linear memory benefits?
 
 
 

@@ -63,6 +63,7 @@ When a job executes, it is accessing a *copy* of the struct, not the very same v
 The iterators we get from ComponentGroups (ComponentDataArray, EntityArray, *et al.*) are also valid job fields, but jobs touching entity components should only be created in the context of *JobComponentSystems* (described later).
 
 A job might finish before *Complete()* is called, but calling *Complete()* removes the Job System's internal references to the job and allows the main thread to procede knowing that a job is totally finished. Every job should be completed at some point to avoid a resource leak and to create a sync point past which the job is guaranteed to be done.
+Additional *Complete()* calls on a job handle after the first do nothing.
 
 Only the main thread can schedule and complete jobs (for reasons explained [here](https://github.com/Unity-Technologies/EntityComponentSystemSamples/blob/master/Documentation/content/scheduling_a_job_from_a_job.md)). We usually want the main thread to do business while jobs run on worker threads, so we usually delay calling *Complete()* on a job until we actually need the job completed (which most commonly is at the end of the current frame or at the beginning of the next frame).
 
@@ -271,8 +272,8 @@ Additionally, right before a system *OnUpdate()* is called, an exception is thro
 A **JobComponentSystem** is like a ComponentSystem but helps us create jobs with appropriate dependencies that avoid entity component access conflicts. Unlike in a normal ComponentSystem, the *OnUpdate()* method receives a job handle and returns a job handle:
 
 1. Immediately after each JobComponentSystem's *OnUpdate()* returns, *JobHandle.ScheduleBatchedJobs()* is called, thus starting execution of any jobs scheduled in the *OnUpdate()*.
-2. At the end of the frame, *Complete()* is called on every JobHandle returned by the *OnUpdate()* calls. (Therefore JobComponentSystems are not meant for creating jobs that span multiple frames.)
-3. The Job System is aware of which ComponentSystems access which ComponentGroups by virtue of each ComponentSystem's *GetComponentGroup()* calls. The job handle passed to *OnUpdate()* combines the job handles returned by the other JobComponentSystems updated previously in the frame which have ComponentGroup access that conflicts with the current JobComponentSystem.
+2. Immediately before *OnUpdate()*, *Complete()* is called on the JobHandle returned by the system's previous *OnUpdate()* call. So a JobComponentSystem is intended for jobs that at most take a frame to complete.
+3. The Job System is aware of which ComponentSystems access which ComponentGroups by virtue of each ComponentSystem's *GetComponentGroup()* calls. The job handle passed to *OnUpdate()* combines the job handles returned by the other JobComponentSystems updated previously in the frame which access ComponentGroups conflicting with those accessed in this JobComponentSystem.
 
 For example, say we have JobComponentSystems A, B, C, D, and E, updated in that order. If E's ComponentGroups conflict with A and D's ComponentGroups, then the JobHandle passed to the *OnUpdate()* of E will combine the JobHandles returned by A and D, such that E's jobs can depend upon A and D's.
 
@@ -290,12 +291,6 @@ If jobs created in two separate JobComponentSystems conflict, we should specify 
 
 Nothing stops us from creating jobs in a JobComponentSystem's *OnUpdate()* which do not depend upon the input JobHandle and which are not themselves dependencies of the returned JobHandle&mdash;but doing so generally defeats the purpose of a JobComponentSystem.
 
+If we want to complete a JobComponentSystem's jobs earlier than the system's next update, we can inject a BarrierSystem: before flushing its EntityCommandBuffers in its update, a BarrierSystem completes the job handles returned by any JobComponentSystems which inject the BarrierSystem.
 
-
-### todo
-
-using EntityCommandBuffers in jobs
-
-barriers
-
-what about multi-frame jobs accessing components? possible? bad idea?
+While it's possible and sometimes useful to create jobs that run longer than a frame, we generally avoid multi-frame jobs which access component groups. Jobs which access entity components should only be created in JobComponentSystems, and these jobs are always completed by the system's next update at the latest. For a multi-frame job which needs to read entity components, we can copy the data to native containers and then use those native containers in the job.
