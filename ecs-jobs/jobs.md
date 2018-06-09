@@ -1,3 +1,5 @@
+[\<\< prev](intro.md)
+
 ## the Job System
 
 Rather than creating our own threads, we can use the Job System, which schedules units of work called 'jobs' to run in Unity's own threads. The Job System addresses three problems with writing multi-threaded code:
@@ -269,3 +271,5 @@ h.Complete();
 
 job.x[0] = 5.0f;   // OK to touch the container after the job's completion
 ```
+
+[next \>\>](ecs.md)

@@ -1,4 +1,6 @@
- ## Entity Component System
+[\<\< next](jobs.md) 
+ 
+## Entity Component System
 
 In Unity's traditional programming model, an instance of the GameObject class is a container of instances of the Component class, and the Components have not just data but also methods like *Update()*, which are called in the Unity event loop.
 
@@ -394,50 +396,4 @@ Effectively, a barrier is a coordination point in our system update loop: entity
 
 The EndFrameBarrier is created for us and updates very last thing in a frame, after all other systems and after rendering. (Actually, EndFrameBarrier is updated as the very *first* thing in a frame, but logically that's the same point.)
 
-### hybrid API
-
-We can add IComponentData struct values to GameObjects by making a MonoBehavior that inherits from ComponentDataWrapper:
-
-```csharp
-// a normal component struct
-public struct MyComponent : IComponentData
-{
-    public float val;
-}
-
-// Instances of this wrapper can be added to GameObjects.
-// The public fields of the wrapped struct are exposed to the inspector.
-public class MyComponentWrapper : ComponentDataWrapper<MyComponent>
-{}
-```
-
-We can also create an entity that mirrors a GameObject by adding a GameObjectEntity component to the GameObject.
-
-[is the entity and gameobject coordinated in any way, or are they just separate representations of the same data? give example]
-
-### todo
-
-[is an effort made to avoid fragmentation from too many non-full chunks of a given archetype?]
-
-
-
-how to create worlds and copy entities between?
-
-
-how much should we lean on native containers?
-
-only blittable types in components, but shouldn't a native container be blittable? it's not managed memory, so...
-
-
-
-
-
-[can't have booleans because they're not blittable, instead use enum of struct of byte?]
-
-ExclusiveEntityTransaction
-
- MoveEntitiesFrom
-
-[why are NativeContainers not blittable?]
-
-FixedArrayArray is like a special component type
+[next \>\>](ecs_jobs.md)
