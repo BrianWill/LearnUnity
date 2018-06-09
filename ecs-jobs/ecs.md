@@ -20,38 +20,6 @@ The old Component types offer tons of functionality: rendering, collisions, phys
 
 Also understand that the ECS editor workflow is very much a work-in-progress. The Entity Debugger window allows us to inspect systems and entities, but we cannot yet construct scenes out of entities without involving GameObjects.
 
-### native containers
-
-Not every piece of data fits well into the mold of entities and components, which is one reason why Unity provides a set of 'native containers': basic data structures implemented as structs pointing into native memory. As this memory is not garbage-collected, it's your responsibility to deallocate any native container (by calling its *Dispose()* method) when it's no longer needed.
-
-The provided native container types are:
-
-- NativeArray
-- NativeSlice (logical indices into a NativeArray)
-- NativeList
-- NativeHashMap
-- NativeQueue
-- NativeMultiHashMap
-
-You can implement your own native containers as described [here](https://github.com/Unity-Technologies/EntityComponentSystemSamples/blob/master/Documentation/content/custom_job_types.md#custom-nativecontainers).
-
-Because they're not blittable, native containers cannot be stored in components. Instead, long-lived native containers are generally stored in the systems themselves.
-
-As we'll see with the Job System, the native containers have runtime thread-safety checks enabled in the editor which catch improper concurrent access.
-
-When creating a native container, we specify one of three allocators from which to allocate its memory:
-
-- **Allocator.Temp**: fastest allocation. Temp allocations should not live longer than the frame, and so you should generally dispose of a Temp native container in the same method call in which it's created.
-- **Allocator.TempJob**: slower allocation. Safety checks throw an exception if a TempJob allocation lives longer than 4 frames.
-- **Allocator.Persistent**: slowest allocation (basically just a wrapper for malloc). Lives indefinitely.
-
-Example:
-
-```csharp
-// a Temp array of 5 floats
-NativeArray<float> result = new NativeArray<float>(5, Allocator.Temp);
-```
-
 ### entity storage
 
 An EntityManager's entities and their components are stored in chunks:
@@ -309,10 +277,19 @@ public class MySystem : ComponentSystem
 }
 ```
 
-[subtractive]
-[SetFilter]
+We can mark component types as read only and exclude entities which include specified types:
 
-[disadvantage to injection? can i get reference to the componentgroup so as to set filters?]
+```csharp
+// This group matches entities which have a Bar and Ack component but no Foo component.
+// The Ack components can only be read, not written.
+ComponentGroup group = GetComponentGroup(
+    ComponentType.Subtractive(typeof(Foo)),
+    typeof(Bar),
+    ComponentType.ReadOnly(typeof(Ack))
+);
+```
+
+[todo: filters]
 
 #### EntityCommandBuffer
 
@@ -361,7 +338,7 @@ public class MySystem : ComponentSystem
     public struct MyGroup
     {
         EntityArray Entities;
-        ComponentDataArray<FooComponent> Foos;
+        [ReadOnly] ComponentDataArray<FooComponent> Foos;
         ComponentDataArray<BarComponent> Bars;
         public int Length;
     }
@@ -375,22 +352,25 @@ public class MySystem : ComponentSystem
         for (int i = 0; i != group.Length; i++) 
         {
             Entity e = group.Entities[i];
-            FooComponent f = group.Foos[i];
+            FooComponent f = group.Foos[i];  // Foos is read only
             BarComponent b = group.Bars[i];
             // ...
         }
     }
 ```
 
+There is as of yet no injection equivalent for ComponentType.Subtractive, and we cannot set filters on an injected ComponentGroup.
+
 #### BarrierSystem
 
 A BarrierSystem is a kind of system whose update cannot be overridden and so a barrier class is always left empty:
 
 ```csharp
+// we usually want to specify when a barrier updates
 [UpdateAfter(typeof(MySystem))]
 class MyBarrier : BarrierSystem
 {
-    // don't put anything in here!
+    // leave me empty!
 }
 ```
 
@@ -410,9 +390,7 @@ class MySystem : ComponentSystem
 }
 ```
 
-Also, a barrier injected into a JobComponentSystem (described [here](jobs.md#JobComponentSystem)) will complete the job handle returned by that JobComponentSystem's update.
-
-Effectively, a barrier is a coordination point in our system update loop.
+Effectively, a barrier is a coordination point in our system update loop: entity component changes enqueued in previous system updates can be enacted in a barrier's update.
 
 The EndFrameBarrier is created for us and updates very last thing in a frame, after all other systems and after rendering. (Actually, EndFrameBarrier is updated as the very *first* thing in a frame, but logically that's the same point.)
 

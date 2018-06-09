@@ -1,8 +1,6 @@
-
-
 ## the Job System
 
-Rather than creating our own threads, we can use the Job System, which schedules units of work to run in Unity's own threads. The Job System addresses three problems with writing multi-threaded code:
+Rather than creating our own threads, we can use the Job System, which schedules units of work called 'jobs' to run in Unity's own threads. The Job System addresses three problems with writing multi-threaded code:
 
 1. Creating and managing our own threads is bothersome and error-prone.
 2. Any threads we create wastefully contend with each other and with Unity's own threads for CPU time.
@@ -12,6 +10,34 @@ Unity creates a thread for every logical core in your system: one core runs the 
 
 Once running, a job cannot be interrupted or moved to another thread, and so a job effectively owns its thread until it completes. For this reason (and others), the Job System is inappropriate for I/O tasks.
 
+### native containers
+
+Unity provides a set of 'native containers': basic data structures implemented as structs pointing into native memory. As this memory is not garbage-collected, it's your responsibility to deallocate any native container (by calling its *Dispose()* method) when it's no longer needed.
+
+The provided native container types are:
+
+- NativeArray
+- NativeSlice (logical indices into a NativeArray)
+- NativeList
+- NativeHashMap
+- NativeQueue
+- NativeMultiHashMap
+
+You can implement your own native containers as described [here](https://github.com/Unity-Technologies/EntityComponentSystemSamples/blob/master/Documentation/content/custom_job_types.md#custom-nativecontainers).
+
+When creating a native container, we specify one of three allocators from which to allocate its memory:
+
+- **Allocator.Temp**: fastest allocation. Temp allocations should not live longer than the frame, and so you should generally dispose of a Temp native container in the same method call in which it's created.
+- **Allocator.TempJob**: slower allocation. Safety checks throw an exception if a TempJob allocation lives longer than 4 frames.
+- **Allocator.Persistent**: slowest allocation (basically just a wrapper for malloc). Lives indefinitely.
+
+Example:
+
+```csharp
+// a Temp array of 5 floats
+NativeArray<float> result = new NativeArray<float>(5, Allocator.Temp);
+```
+
 #### IJob
 
 IJob is the primary interface for defining a job:
@@ -19,7 +45,6 @@ IJob is the primary interface for defining a job:
 ```csharp
 public struct MyJob : IJob
 {
-    // each field must be a blittable type or a native container
     public float a;                  // a blittable type
     public NativeArray<float> b;     // a native container
     
@@ -56,14 +81,13 @@ val = job.a;                // 5.0f (job.a was unchanged by the job!)
 job.b.Dispose();
 ```
 
-A job should only access its own fields and not touch anything outside the job. Because jobs may run in native threads rather than normal C# threads, bad things can happen if jobs access managed globals (either directly or indirectly).
+Because jobs may run in native threads rather than normal C# threads, bad things can happen if jobs access managed data, including any static fields. In general, a job *Execute()* method should only access its own locals and the fields of the job struct.
 
-When a job executes, it is accessing a *copy* of the struct, not the very same value we created on the main thread. Consequently, **changes to the fields within the job are *not* accessible outside the job**. However, when a NativeContainer struct is copied, the copy points to the same native allocated memory, and so **changes in a NativeContainer *are* accessible outside the job**. In the above example, we want to produce one piece of data from the job, so we give it a NativeArray of length one and store the value to return in the array's single slot.
+The fields of a job can only be native container types or [blittable types](https://en.wikipedia.org/wiki/Blittable_types) (reference types are not blittable!). The *Schedule()* method throws an exception if the struct contains any fields which aren't native containers or blittable.
 
-The iterators we get from ComponentGroups (ComponentDataArray, EntityArray, *et al.*) are also valid job fields, but jobs touching entity components should only be created in the context of *JobComponentSystems* (described later).
+When a job executes, it is accessing a *copy* of the struct, not the very same value created on the main thread. Consequently, **changes to the fields within the job are *not* accessible outside the job**. However, when a NativeContainer struct is copied, the copy points to the same native allocated memory, and so **changes in a NativeContainer *are* accessible outside the job**. In the above example, we want to produce one piece of data from the job, so we give it a NativeArray of length one and store the value to return in the array's single slot.
 
-A job might finish before *Complete()* is called, but calling *Complete()* removes the Job System's internal references to the job and allows the main thread to procede knowing that a job is totally finished. Every job should be completed at some point to avoid a resource leak and to create a sync point past which the job is guaranteed to be done.
-Additional *Complete()* calls on a job handle after the first do nothing.
+A job might finish before *Complete()* is called, but calling *Complete()* removes the Job System's internal references to the job and allows the main thread to procede knowing that a job is totally finished. Every job should be completed at some point to avoid a resource leak and to create a sync point past which the job is guaranteed to be done. Additional *Complete()* calls on a job handle after the first do nothing.
 
 Only the main thread can schedule and complete jobs (for reasons explained [here](https://github.com/Unity-Technologies/EntityComponentSystemSamples/blob/master/Documentation/content/scheduling_a_job_from_a_job.md)). We usually want the main thread to do business while jobs run on worker threads, so we usually delay calling *Complete()* on a job until we actually need the job completed (which most commonly is at the end of the current frame or at the beginning of the next frame).
 
@@ -89,18 +113,17 @@ JobHandle b = jobB.Schedule(a);
 
 Calling *Complete()* on a job implicitly first completes any jobs upon which it depends (directly or indirectly). For example, if A is a dependency of B which is a dependency of C, calling *Complete()* on C will first complete A and then B.
 
-Though *Schedule()* only takes one handle, a job can wait for multiple other jobs by using *JobHandle.CombineDependencies()* 
-(which takes two or three job handles or a NativeArray\<JobHandle\>):
+Though *Schedule()* only takes one handle, a job can wait for multiple other jobs by using *JobHandle.CombineDependencies()*, which takes two or three job handles or a NativeArray\<JobHandle\>:
 
 ```csharp
-JobHandle d = jobD.Schedule();
-JobHandle c = jobC.Schedule();
+JobHandle a = jobA.Schedule();
 JobHandle b = jobB.Schedule();
-JobHandle combined = JobHandle.CombineDependencies(b, c, d);
+JobHandle c = jobC.Schedule();
+JobHandle combined = JobHandle.CombineDependencies(a, b, c);
 
-// A will not run until after B, C, and D complete.
-// B, C, and D may run in parallel.
-JobHandle a = jobA.Schedule(combined);  
+// D will not run until after A, B, and C complete.
+// A, B, and C may run in parallel.
+JobHandle d = jobD.Schedule(combined);  
 ```
 
 Understand that a queued job is not readied for execution until either:
@@ -145,7 +168,7 @@ JobHandle.ScheduleBatchedJobs();
 
 
 //...later in the main thread
-h.Complete();               // wait for the job(s) to complete
+h.Complete();                 // wait for the job(s) to complete
 float val = job.b[0];         // 5.0f
 float val2 = job.b[4];        // 9.0f
 job.b.Dispose();
@@ -155,10 +178,9 @@ Above, the job calls *Execute()* 1000 times, with *i* starting at 0 and incremen
 
 The larger the batch size, the fewer the queued jobs and so the less overhead, but the fewer opportunities for parallel execution. In general, 32 or 64 is a good batch size when each *Execute()* does very little, and 1 is a good batch size when each *Execute()* does a significant chunk of work.
 
-
 ### safety checks
 
-When one job (or the main thread) writes to a native container, we don't want other jobs that might run in parallel (or the main thread) to read or write the same container, as this likely will create race conditions. Given two conflicting jobs, it is our responsibility to ensure that one will complete before the other starts, either by calling *Complete()* on one before scheduling the other, or by making one a dependency of the other.
+When one job writes to a native container, we don't want other jobs that might run in parallel to read or write the same container, as this likely will create race conditions. Given two conflicting jobs, it is our responsibility to ensure that one job will complete before the other starts, either by calling *Complete()* on one before scheduling the other, or by making one a dependency of the other.
 
 The Job System can't decide for us which of two conflicting jobs should run first because that depends upon the logic of what they do! However, the Job System performs safety checks at runtime in the editor to help us detect conflicting jobs. The safety checks track which scheduled jobs touch which native containers, and an exception is thrown when jobs conflict. Some example scenarios:
 
@@ -184,7 +206,7 @@ JobHandle a = jobA.Schedule();
 a.Complete();  
 
 // no possible conflict, so no exception
-JobHandle b = jobB.Schedule();      // OK
+JobHandle b = jobB.Schedule();     // OK
 ```
 
 
@@ -193,7 +215,7 @@ JobHandle b = jobB.Schedule();      // OK
 JobHandle a = jobA.Schedule();
 
 // B will wait for A to complete, so no possible conflict
-JobHandle b = jobB.Schedule(a);    // OK
+JobHandle b = jobB.Schedule(a);     // OK
 ```
 
 If two jobs have the same container marked as \[ReadOnly\], there is no conflict from their concurrent access:
@@ -247,50 +269,3 @@ h.Complete();
 
 job.x[0] = 5.0f;   // OK to touch the container after the job's completion
 ```
-
-The entity component iterators (ComponentDataArray, EntityArray, *etc.*) have similar safety checks:
-
-```csharp
-// assume jobs A and B reference the same ComponentDataArray
-JobHandle a = jobA.Schedule();
-JobHandle b = jobB.Schedule();     // exception!
-```
-
-...but because two separate iterators can access the same entity components in memory, the checks are more thorough so as to detect conflicts between separate iterators:
-
-```csharp
-// assume jobs A and B reference separate ComponentDataArrays which 
-// access the same components in memory
-JobHandle a = jobA.Schedule();
-JobHandle b = jobB.Schedule();     // exception!
-```
-
-Additionally, right before a system *OnUpdate()* is called, an exception is thrown if any of the system's ComponentGroups conflict with a scheduled job.
-
-#### JobComponentSystem
-
-A **JobComponentSystem** is like a ComponentSystem but helps us create jobs with appropriate dependencies that avoid entity component access conflicts. Unlike in a normal ComponentSystem, the *OnUpdate()* method receives a job handle and returns a job handle:
-
-1. Immediately after each JobComponentSystem's *OnUpdate()* returns, *JobHandle.ScheduleBatchedJobs()* is called, thus starting execution of any jobs scheduled in the *OnUpdate()*.
-2. Immediately before *OnUpdate()*, *Complete()* is called on the JobHandle returned by the system's previous *OnUpdate()* call. So a JobComponentSystem is intended for jobs that at most take a frame to complete.
-3. The Job System is aware of which ComponentSystems access which ComponentGroups by virtue of each ComponentSystem's *GetComponentGroup()* calls. The job handle passed to *OnUpdate()* combines the job handles returned by the other JobComponentSystems updated previously in the frame which access ComponentGroups conflicting with those accessed in this JobComponentSystem.
-
-For example, say we have JobComponentSystems A, B, C, D, and E, updated in that order. If E's ComponentGroups conflict with A and D's ComponentGroups, then the JobHandle passed to the *OnUpdate()* of E will combine the JobHandles returned by A and D, such that E's jobs can depend upon A and D's.
-
-The sum effect is that, if all jobs created in every JobComponentSystem:
-
-1. ...only use entity-component iterators from their JobComponentSystem's own ComponentGroups
-2. ...*and* use their *OnUpdate()*'s input JobHandle as a dependency (direct or indirect)
-3. ...*and* are themselves dependencies of their *OnUpdate()*'s returned JobHandle (or *are* the returned JobHandle itself) 
-
-...then all jobs created within each JobComponentSystem will avoid component access conflicts with the jobs created in all other JobComponentSystems.
-
-For the jobs created *within* a single JobComponentSystem, the editor runtime safety checks will detect when two scheduled jobs conflict in their component access, but it is our responsibility to manually resolve these conflicts by making one job the dependency of the other.
-
-If jobs created in two separate JobComponentSystems conflict, we should specify which *OnUpdate()* should run first with the *UpdateBefore* and *UpdateAfter* attributes. For example, if the jobs of JobComponentSystem A should mutate components before they are read in the jobs of JobComponentSystem B, then we should specify that A must update before B.
-
-Nothing stops us from creating jobs in a JobComponentSystem's *OnUpdate()* which do not depend upon the input JobHandle and which are not themselves dependencies of the returned JobHandle&mdash;but doing so generally defeats the purpose of a JobComponentSystem.
-
-If we want to complete a JobComponentSystem's jobs earlier than the system's next update, we can inject a BarrierSystem: before flushing its EntityCommandBuffers in its update, a BarrierSystem completes the job handles returned by any JobComponentSystems which inject the BarrierSystem.
-
-While it's possible and sometimes useful to create jobs that run longer than a frame, we generally avoid multi-frame jobs which access component groups. Jobs which access entity components should only be created in JobComponentSystems, and these jobs are always completed by the system's next update at the latest. For a multi-frame job which needs to read entity components, we can copy the data to native containers and then use those native containers in the job.
