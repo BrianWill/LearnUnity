@@ -85,11 +85,11 @@ job.b.Dispose();
 
 Because jobs may run in native threads rather than normal C# threads, bad things can happen if jobs access managed data, including any static fields. In general, a job *Execute()* method should only access its own locals and the fields of the job struct.
 
-The fields of a job can only be native container types or [blittable types](https://en.wikipedia.org/wiki/Blittable_types) (reference types are not blittable!). The *Schedule()* method throws an exception if the struct contains any fields which aren't native containers or blittable.
+The *Schedule()* method throws an exception if the struct contains any fields which are not native container types or [blittable types](https://en.wikipedia.org/wiki/Blittable_types) (reference types are not blittable!).
 
 When a job executes, it is accessing a *copy* of the struct, not the very same value created on the main thread. Consequently, **changes to the fields within the job are *not* accessible outside the job**. However, when a NativeContainer struct is copied, the copy points to the same native allocated memory, and so **changes in a NativeContainer *are* accessible outside the job**. In the above example, we want to produce one piece of data from the job, so we give it a NativeArray of length one and store the value to return in the array's single slot.
 
-A job might finish before *Complete()* is called, but calling *Complete()* removes the Job System's internal references to the job and allows the main thread to procede knowing that a job is totally finished. Every job should be completed at some point to avoid a resource leak and to create a sync point past which the job is guaranteed to be done. Additional *Complete()* calls on a job handle after the first do nothing.
+A job might finish before *Complete()* is called, but calling *Complete()* removes the Job System's internal references to the job and allows the main thread to procede knowing that a job is totally finished. Every job should be completed at some point to avoid a resource leak and to create a sync point past which the job is guaranteed to be done. Additional *Complete()* calls on a job handle after the first call do nothing.
 
 Only the main thread can schedule and complete jobs (for reasons explained [here](https://github.com/Unity-Technologies/EntityComponentSystemSamples/blob/master/Documentation/content/scheduling_a_job_from_a_job.md)). We usually want the main thread to do business while jobs run on worker threads, so we usually delay calling *Complete()* on a job until we actually need the job completed (which most commonly is at the end of the current frame or at the beginning of the next frame).
 
