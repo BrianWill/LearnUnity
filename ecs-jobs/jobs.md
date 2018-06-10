@@ -91,9 +91,9 @@ When a job executes, it is accessing a *copy* of the struct, not the very same v
 
 A job might finish before *Complete()* is called, but calling *Complete()* removes the Job System's internal references to the job and allows the main thread to procede knowing that a job is totally finished. Every job should be completed at some point to avoid a resource leak and to create a sync point past which the job is guaranteed to be done. Additional *Complete()* calls on a job handle after the first call do nothing.
 
-Only the main thread can schedule and complete jobs (for reasons explained [here](https://github.com/Unity-Technologies/EntityComponentSystemSamples/blob/master/Documentation/content/scheduling_a_job_from_a_job.md)). We usually want the main thread to do business while jobs run on worker threads, so we usually delay calling *Complete()* on a job until we actually need the job completed (which most commonly is at the end of the current frame or at the beginning of the next frame).
+Only the main thread can schedule and complete jobs (for reasons explained [here](https://github.com/Unity-Technologies/EntityComponentSystemSamples/blob/master/Documentation/content/scheduling_a_job_from_a_job.md)). We usually want the main thread to do business while jobs run on worker threads, so we usually delay calling *Complete()* on a job as long as possible until we absolutely *need* the job completed (which most commonly is at the end of the current frame or after a full frame has elapsed).
 
-To complete multiple jobs but allow them to complete in no particular order, we can use *JobHandle.CompleteAll()*, which takes two or three job handles or a NativeArray\<JobHandle\>:
+To complete multiple jobs but allow them to complete in no particular order, we use *JobHandle.CompleteAll()*, which takes two or three job handles or a NativeArray\<JobHandle\> (for four or more handles):
 
 ```csharp
 JobHandle a = jobA.Schedule();
@@ -115,7 +115,7 @@ JobHandle b = jobB.Schedule(a);
 
 Calling *Complete()* on a job implicitly first completes any jobs upon which it depends (directly or indirectly). For example, if A is a dependency of B which is a dependency of C, calling *Complete()* on C will first complete A and then B.
 
-Though *Schedule()* only takes one handle, a job can wait for multiple other jobs by using *JobHandle.CombineDependencies()*, which takes two or three job handles or a NativeArray\<JobHandle\>:
+Though *Schedule()* only takes one handle, a job can wait for multiple other jobs by using *JobHandle.CombineDependencies()*, which takes two or three job handles or a NativeArray\<JobHandle\> (for four or more handles):
 
 ```csharp
 JobHandle a = jobA.Schedule();
@@ -128,11 +128,11 @@ JobHandle combined = JobHandle.CombineDependencies(a, b, c);
 JobHandle d = jobD.Schedule(combined);  
 ```
 
-Understand that a queued job is not readied for execution until either:
+A queued job is not greenlit for execution until either:
 
 1. *JobHandle.ScheduleBatchedJobs()* is called, which readies *all* queued jobs
-2. *Complete()* is called on its handle
-3. *Complete()* is called on the handle of another job for which this job is a (direct or indirect) dependency
+2. or *Complete()* is called on its handle
+3. or *Complete()* is called on the handle of another job for which this job is a (direct or indirect) dependency
 
 When the main thread calls *Complete()*, one or more of the jobs to complete may not have started running yet, and those jobs get priority over any other jobs waiting on the queue. Rather than let a core go to waste, the Job System may use the main thread to run one or more of those jobs. (After all, the main thread would otherwise just sit there and wait, so it might as well chip in!)
 
@@ -160,7 +160,7 @@ MyParallelJob job = new MyJob();
 job.a = 5.0f; 
 job.b = new NativeArray<float>(1000, Allocator.TempJob);
 for (int i = 0; i < 1000; i++) {
-    job.b[i] = i;
+    job.b[i] = i + job.a;
 }
 
 // add job to the queue (1000 iterations, batch size of 64)
@@ -182,9 +182,9 @@ The larger the batch size, the fewer the queued jobs and so the less overhead, b
 
 ### safety checks
 
-When one job writes to a native container, we don't want other jobs that might run in parallel to read or write the same container, as this likely will create race conditions. Given two conflicting jobs, it is our responsibility to ensure that one job will complete before the other starts, either by calling *Complete()* on one before scheduling the other, or by making one a dependency of the other.
+When one job writes to a native container, we don't want other jobs that might run in parallel to read or write the same container, as this likely would cause race conditions. Given two conflicting jobs, it is our responsibility to ensure that one job will complete before the other starts, either by calling *Complete()* on one before scheduling the other, or by making one a dependency of the other.
 
-The Job System can't decide for us which of two conflicting jobs should run first because that depends upon the logic of what they do! However, the Job System performs safety checks at runtime in the editor to help us detect conflicting jobs. The safety checks track which scheduled jobs touch which native containers, and an exception is thrown when jobs conflict. Some example scenarios:
+The Job System can't decide for us which of two conflicting jobs should run first because that depends upon the logic of what the jobs do! However, the Job System performs safety checks at runtime in the editor to help us detect conflicting jobs. The safety checks track which scheduled jobs touch which native containers, and an exception is thrown when jobs conflict. Some example scenarios:
 
 ```csharp
 // assume jobs A and B reference the same NativeContainer
@@ -225,8 +225,7 @@ If two jobs have the same container marked as \[ReadOnly\], there is no conflict
 ```csharp
 public struct MyJob : IJob
 {
-    [ReadOnly]
-    public NativeArray<float> x;
+    [ReadOnly] public NativeArray<float> x;
 
     public void Execute()
     {...}
