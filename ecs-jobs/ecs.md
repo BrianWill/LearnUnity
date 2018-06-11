@@ -173,9 +173,9 @@ The bootstraping process automatically creates an instance of each ComponentSyst
 Execution order of systems is automatically optimized, but we can control the order when needed with attributes:
 
 ```csharp
-// MySystem will update at some point before SomeSystem 
+// MySystem will update at some point in the frame before SomeSystem 
 [UpdateBefore(typeof(SomeSystem))]   
-// MySystem will update at some point after OtherSystem 
+// MySystem will update at some point in the frame after OtherSystem 
 [UpdateAfter(typeof(OtherSystem))]   
 public class MySystem: ComponentSystem
 { 
@@ -186,9 +186,9 @@ public class MySystem: ComponentSystem
 Systems can belong to groups. System and groups can be ordered relative to other systems and groups. A group is denoted simply by an empty class:
 
 ```csharp
-// systems in MyUpdateGroup will update at some point before OtherGroup 
+// systems in MyUpdateGroup will update at some point in the frame before OtherGroup 
 [UpdateBefore(typeof(OtherGroup))]
-// systems in MyUpdateGroup will update at some point after SomeSystem
+// systems in MyUpdateGroup will update at some point in the frame after SomeSystem
 [UpdateAfter(typeof(SomeSystem))]
 public class MyUpdateGroup
 {}
