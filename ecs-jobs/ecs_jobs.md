@@ -2,7 +2,7 @@
 
 ## using the Job System with ECS
 
-The iterators we get from ComponentGroups (ComponentDataArray, EntityArray, *et al.*) are valid job fields, but jobs touching entity components should only be created in the context of *JobComponentSystems* (described later).
+The iterators we get from ComponentGroups (ComponentDataArray, EntityArray, *et al.*) are valid job fields, but jobs touching entity components should only be created in the context of *JobComponentSystems* (described below).
 
 Like native containers, the entity component iterators have job safety checks:
 
