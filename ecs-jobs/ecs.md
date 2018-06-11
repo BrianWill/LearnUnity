@@ -37,7 +37,7 @@ For example, say a chunk stores entities of the archetype made up of component t
     int maxEntities = 16536 / (sizeof(id) + sizeof(A) + sizeof(B) + sizeof(C));
 ```
 
-So this chunk is divided into four logical arrays, each *maxEntities* in size: one array for the id's, one for the A components, one for the B components, and one for the C components. The chunk also, of course, stores the offsets to these arrays and the count of entities currently stored. The first entity of the chunk is stored at index 0 of all four of the arrays, the second at index 1, the third at index 2, *etc.* If the chunk has, say, 100 stored entities but we then remove the entity at index 37, the entity at index 99 will be moved down to index 37.
+So this chunk is divided into four logical arrays, each *maxEntities* in size: one array for the ID's, one for the A components, one for the B components, and one for the C components. The chunk also, of course, stores the offsets to these arrays and the count of entities currently stored. The first entity of the chunk is stored at index 0 of all four of the arrays, the second at index 1, the third at index 2, *etc.* If the chunk has, say, 100 stored entities but we then remove the entity at index 37, the entity at index 99 will be moved down to index 37.
 
 ![chunk layout](ecs%20slides.png?raw=true)
 
@@ -56,7 +56,7 @@ This explains why the components are stored in their own arrays: for a chunk wit
 
 ![chunk traversal](ecs%20slides3.png?raw=true)
 
-The entity manager needs to keep track of which ids are in use and also needs sometimes to quickly lookup entities by id. So aside from the chunks, an EntityManager also stores an array of EntityData structs:
+The entity manager needs to keep track of which ID's are in use and also needs sometimes to quickly lookup entities by ID. So aside from the chunks, an EntityManager also stores an array of EntityData structs:
 
 ```csharp
 
@@ -69,7 +69,7 @@ struct EntityData
 }
 ```
 
-The EntityData of entity *n* is stored at index *n* in this array, *e.g.* entity 72's EntityData is stored at index 72. So the id's themselves are *implied* in this array but not actually stored.
+The EntityData of entity *n* is stored at index *n* in this array, *e.g.* entity 72's EntityData is stored at index 72. So the ID's themselves are *implied* in this array but not actually stored.
 
 The Chunk field points to the chunk where the entity and its components are actually stored, and IndexInChunk denotes the index of the entity within the arrays of that chunk.
 
@@ -84,7 +84,7 @@ A free slot is denoted by the Chunk field being null. The EntityManager keeps tr
 
 ![entitydata array](ecs%20slides2.png?raw=true)
 
-But what if an entity is destroyed and then its id reused for a subsequently created entity? How do we avoid confusing the new entity for the old? Well in truth, an entity's id is *really* a combination of its index in the EntityData array *and* its Version. The Version fields are all initialized to 1, and when an entity is destroyed, its Version is incremented. To reference an entity, we need not just its index but also its Version so as to make sure our referenced entity still exists: if we lookup an entity by index but the Version is greater than in our reference, that means the entity we're referencing no longer exists.
+But what if an entity is destroyed and then its ID reused for a subsequently created entity? How do we avoid confusing the new entity for the old? Well in truth, an entity's ID is *really* a combination of its index in the EntityData array *and* its Version. The Version fields are all initialized to 1, and when an entity is destroyed, its Version is incremented. To reference an entity, we need not just its index but also its Version so as to make sure our referenced entity still exists: if we lookup an entity by index but the Version is greater than in our reference, that means the entity we're referencing no longer exists.
 
 When we create more entities than will fit in the EntityData array, the array is expanded by copying everything to a new, larger array. The array is never shrunk.
 
@@ -104,9 +104,9 @@ Shared components are most appropriate for component types which are mutated inf
 
 ### data modeling guidelines
 
-Our (non-shared) components cannot store arrays or collections of any kind, including native containers. What we *can* store in our components, though, are entity ids and indexes into native containers.
+Our (non-shared) components cannot store arrays or collections of any kind, including native containers. What we *can* store in our components, though, are entity ID's and indexes into native containers.
 
-Say in a deathmatch game, the player who killed another the most times is that other player's nemesis. A single player can be the nemesis of multiple other players, so this is a one-to-many relationship. The most obvious way to represent this is to give the player component a Nemesis field to store the entity id of the player's nemesis (with id index -1 denoting that the player has no nemesis).
+Say in a deathmatch game, the player who killed another the most times is that other player's nemesis. A single player can be the nemesis of multiple other players, so this is a one-to-many relationship. The most obvious way to represent this is to give the player component a Nemesis field to store the entity ID of the player's nemesis (with ID index -1 denoting that the player has no nemesis).
 
 However, when looping through all player entities, understand that following these Nemesis references means jumping around memory, thus largely defeating the benefits of linear memory layout. (In fact, an entity lookup through the EntityManager is actually a bit more costly than following ordinary memory references because it requires looking in the EntityData array to find the entity's Chunk and IndexInChunk rather than just directly reading an address.) Sometimes non-linear access is necessary, but just be clear we should endeavor to minimize non-linear access.
 
@@ -211,7 +211,7 @@ EntityManager em = world.GetOrCreateManager<EntityManager>();
 
 // create an entity with no components (yet)
 Entity entity = em.CreateEntity();
-// the index and version together form a logical entity id
+// the index and version together form a logical entity ID
 int index = entity.Index;     
 int version = entity.Version;
 
@@ -235,7 +235,7 @@ bool has = em.HasComponent<MyComponent>(entity);
 // true if entity exists
 bool exists = em.Exists(entity);
 
-// create new entity which is copy of existing entity (same components and data, but new id)
+// create new entity which is copy of existing entity (same components and data, but new ID)
 Entity entity2 = em.Instantiate(entity);
 
 // destroy an entity
