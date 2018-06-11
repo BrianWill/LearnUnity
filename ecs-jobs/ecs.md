@@ -28,7 +28,7 @@ An EntityManager's entities and their components are stored in chunks:
 
 - Each chunk is 16KB.
 - A single chunk only stores entities of the same archetype. (Consequently, adding or removing a component on an entity requires moving it to another chunk!)
-- A chunk is divided into parallel arrays: one for each component type of the archetype and one array for the entity id's themselves. (These are not normal C# arrays but rather arrays stored directly in the chunk's native-allocated memory.) The arrays are kept tightly packed: when an entity is removed, the last entity in the chunk is moved down to fill the gap.
+- A chunk is divided into parallel arrays: one for each component type of the archetype and one array for the entity ID's themselves. (These are not normal C# arrays but rather arrays stored directly in the chunk's native-allocated memory.) The arrays are kept tightly packed: when an entity is removed, the last entity in the chunk is moved down to fill the gap.
 
 For example, say a chunk stores entities of the archetype made up of component types A, B, and C. The number of entities the chunk can store is approximately:
 
