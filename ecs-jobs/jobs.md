@@ -83,13 +83,13 @@ val = job.a;                // 5.0f (job.a was unchanged by the job!)
 job.b.Dispose();
 ```
 
-Because jobs may run in native threads rather than normal C# threads, bad things can happen if jobs access managed data, including any static fields. In general, a job *Execute()* method should only access its own locals and the fields of the job struct.
+Because jobs may run in native threads rather than normal C# threads, bad things can happen if jobs access managed data, including any static fields. In general, a job's *Execute()* method should only access its own locals and the fields of the job struct.
 
 The *Schedule()* method throws an exception if the struct contains any fields which are not native container types or [blittable types](https://en.wikipedia.org/wiki/Blittable_types) (reference types are not blittable!).
 
 When a job executes, it is accessing a *copy* of the struct, not the very same value created on the main thread. Consequently, **changes to the fields within the job are *not* accessible outside the job**. However, when a NativeContainer struct is copied, the copy points to the same native allocated memory, and so **changes in a NativeContainer *are* accessible outside the job**. In the above example, we want to produce one piece of data from the job, so we give it a NativeArray of length one and store the value to return in the array's single slot.
 
-A job might finish before *Complete()* is called, but calling *Complete()* removes the Job System's internal references to the job and allows the main thread to procede knowing that a job is totally finished. Every job should be completed at some point to avoid a resource leak and to create a sync point past which the job is guaranteed to be done. Additional *Complete()* calls on a job handle after the first call do nothing.
+When the main thread calls *Complete()* on a job handle, the call waits for the job to finish if the job hasn't finished already. Calling *Complete()* also removes the Job System's internal references to the job. Every job should be completed at some point to avoid a resource leak and to create a sync point past which the job is guaranteed to be done. Additional *Complete()* calls on a job handle after the first call do nothing.
 
 Only the main thread can schedule and complete jobs (for reasons explained [here](https://github.com/Unity-Technologies/EntityComponentSystemSamples/blob/master/Documentation/content/scheduling_a_job_from_a_job.md)). We usually want the main thread to do business while jobs run on worker threads, so we usually delay calling *Complete()* on a job as long as possible until we absolutely *need* the job completed (which most commonly is at the end of the current frame or after a full frame has elapsed).
 
@@ -113,7 +113,7 @@ JobHandle a = jobA.Schedule();
 JobHandle b = jobB.Schedule(a);   
 ```
 
-Calling *Complete()* on a job implicitly first completes any jobs upon which it depends (directly or indirectly). For example, if A is a dependency of B which is a dependency of C, calling *Complete()* on C will first complete A and then B.
+Calling *Complete()* on a job handle implicitly first completes any jobs upon which it depends (directly or indirectly). For example, if A is a dependency of B which is a dependency of C, calling *Complete()* on C will first complete A and then B.
 
 Though *Schedule()* only takes one handle, a job can wait for multiple other jobs by using *JobHandle.CombineDependencies()*, which takes two or three job handles or a NativeArray\<JobHandle\> (for four or more handles):
 
