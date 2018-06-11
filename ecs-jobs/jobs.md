@@ -134,7 +134,7 @@ A queued job is not greenlit for execution until either:
 2. or *Complete()* is called on its handle
 3. or *Complete()* is called on the handle of another job for which this job is a (direct or indirect) dependency
 
-When the main thread calls *Complete()*, one or more of the jobs to complete may not have started running yet, and those jobs get priority over any other jobs waiting on the queue. Rather than let a core go to waste, the Job System may use the main thread to run one or more of those jobs. (After all, the main thread would otherwise just sit there and wait, so it might as well chip in!)
+When the main thread calls *Complete()*, any jobs it must wait for that aren't yet running will get priority over any other jobs on the queue. Rather than let a core go to waste, the Job System may use the main thread to run one or more of the jobs which *Complete()* is waiting for. (After all, the main thread would otherwise just sit there and wait, so it might as well chip in!)
 
 #### IJobParallelFor
 
