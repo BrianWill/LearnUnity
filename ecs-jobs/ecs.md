@@ -37,7 +37,7 @@ For example, say a chunk stores entities of the archetype made up of component t
     int maxEntities = 16536 / (sizeof(id) + sizeof(A) + sizeof(B) + sizeof(C));
 ```
 
-So this chunk is divided into four logical arrays, each *maxEntities* in size: one array for the ID's, one for the A components, one for the B components, and one for the C components. The chunk also, of course, stores the offsets to these arrays and the count of entities currently stored. The first entity of the chunk is stored at index 0 of all four of the arrays, the second at index 1, the third at index 2, *etc.* If the chunk has, say, 100 stored entities but we then remove the entity at index 37, the entity at index 99 will be moved down to index 37.
+So this chunk is divided into four logical arrays, each *maxEntities* in size: one array for the ID's, one for the A components, one for the B components, and one for the C components. The chunk also, of course, stores the offsets to these arrays and the count of entities currently stored. The first entity of the chunk is stored at index 0 of all four of the arrays, the second at index 1, the third at index 2, *etc.* If the chunk has, say, 100 stored entities but we then remove the entity at index 37, the count will be reduced to 99, and the entity at index 99 will be moved down to index 37 to fill the gap.
 
 ![chunk layout](ecs%20slides.png?raw=true)
 
