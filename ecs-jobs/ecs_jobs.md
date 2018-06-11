@@ -47,6 +47,6 @@ If jobs created in two separate JobComponentSystems conflict, we should specify 
 
 If we want to complete a JobComponentSystem's jobs earlier than the system's next update, we can inject a BarrierSystem: before flushing its EntityCommandBuffers in its update, a BarrierSystem completes the job handles returned by any JobComponentSystems which inject the BarrierSystem.
 
-While it's possible and sometimes useful to create jobs that run longer than a frame, jobs which access entity components should only be created in JobComponentSystems, and these jobs are always completed by the system's next update at the latest. For a multi-frame job which needs to read entity components, we can copy the data to native containers and then use those native containers in the job.
+While it's sometimes useful to create jobs that run longer than a frame, jobs which access entity components should only be created in JobComponentSystems, and these jobs are always completed by the system's next update at the latest. For a multi-frame job which needs to read entity components, we can copy the data to native containers and then use those native containers in the job.
 
 [next \>\>](hybrid_ecs.md)
