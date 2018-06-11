@@ -182,7 +182,7 @@ The larger the batch size, the fewer the queued jobs and so the less overhead, b
 
 ### safety checks
 
-When one job writes to a native container, we don't want other jobs that might run in parallel to read or write the same container, as this likely would cause race conditions. Given two conflicting jobs, it is our responsibility to ensure that one job will complete before the other starts, either by calling *Complete()* on one before scheduling the other, or by making one a dependency of the other.
+When one job writes to a native container, we don't want other jobs that might run in parallel to read or write the same container, as this likely would cause race conditions. Given two conflicting jobs, it is our responsibility to ensure that one job will finish running before the other starts, either by calling *Complete()* on one before scheduling the other, or by making one a dependency of the other.
 
 The Job System can't decide for us which of two conflicting jobs should run first because that depends upon the logic of what the jobs do! However, the Job System performs safety checks at runtime in the editor to help us detect conflicting jobs. The safety checks track which scheduled jobs touch which native containers, and an exception is thrown when jobs conflict. Some example scenarios:
 
