@@ -183,7 +183,7 @@ public class MySystem: ComponentSystem
 }
 ```
 
-Systems can belong to groups. System and groups can be ordered relative to other systems and groups. A group is denoted simply by an empty class:
+Systems can belong to groups. Systems and groups can be ordered relative to other systems and groups. A group is denoted simply by an empty class:
 
 ```csharp
 // systems in MyUpdateGroup will update at some point in the frame before OtherGroup 
