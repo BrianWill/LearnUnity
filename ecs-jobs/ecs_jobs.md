@@ -29,9 +29,9 @@ A **JobComponentSystem** is like a ComponentSystem but helps us create jobs with
 
 1. Immediately after each JobComponentSystem's *OnUpdate()* returns, *JobHandle.ScheduleBatchedJobs()* is called, thus starting execution of any jobs scheduled in the *OnUpdate()*.
 2. Immediately before *OnUpdate()*, *Complete()* is called on the JobHandle returned by the system's previous *OnUpdate()* call. So a JobComponentSystem is intended for jobs that at most take a frame to complete.
-3. The Job System is aware of which ComponentSystems access which ComponentGroups by virtue of each ComponentSystem's *GetComponentGroup()* calls. The job handle passed to *OnUpdate()* combines the job handles returned by the other JobComponentSystems updated previously in the frame which access ComponentGroups conflicting with those accessed in this JobComponentSystem.
+3. The Job System is aware of which ComponentSystems access which ComponentGroups by virtue of each ComponentSystem's *GetComponentGroup()* calls. The job handle passed to *OnUpdate()* combines the job handles returned by the other JobComponentSystems updated since this JobComponentSystem last updated which access ComponentGroups conflicting with those accessed in this JobComponentSystem.
 
-For example, say we have JobComponentSystems A, B, C, D, and E, updated in that order. If E's ComponentGroups conflict with A and D's ComponentGroups, then the JobHandle passed to the *OnUpdate()* of E will combine the JobHandles returned by A and D, such that E's jobs can depend upon A and D's.
+For example, say we have JobComponentSystems A, B, C, D, and E, updated in that order. If D's ComponentGroups conflict with A and E's ComponentGroups, then the JobHandle passed to the *OnUpdate()* of D will combine the JobHandles returned by A (in this frame) and E (in the previous frame), such that D's jobs can be scheduled to depend upon A and E's.
 
 The sum effect is that, if all jobs created in every JobComponentSystem:
 
