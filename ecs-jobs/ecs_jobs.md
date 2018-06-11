@@ -39,13 +39,11 @@ The sum effect is that, if all jobs created in every JobComponentSystem:
 2. ...*and* use their *OnUpdate()*'s input JobHandle as a dependency (direct or indirect)
 3. ...*and* are themselves dependencies of their *OnUpdate()*'s returned JobHandle (or *are* the returned JobHandle itself) 
 
-...then all jobs created within each JobComponentSystem will avoid component access conflicts with the jobs created in all other JobComponentSystems.
+...then all jobs created within each JobComponentSystem will avoid component access conflicts with the jobs created in all other JobComponentSystems. (Nothing forces all of our jobs to follow these rules, but straying from these rules invites trouble and defeats the purpose of JobComponentSystems.)
 
 For the jobs created *within* a single JobComponentSystem, the editor runtime safety checks will detect when two scheduled jobs conflict in their component access, but it is our responsibility to manually resolve these conflicts by making one job the dependency of the other.
 
 If jobs created in two separate JobComponentSystems conflict, we should specify which *OnUpdate()* should run first with the *UpdateBefore* and *UpdateAfter* attributes. For example, if the jobs of JobComponentSystem A should mutate components before they are read in the jobs of JobComponentSystem B, then we should specify that A must update before B.
-
-Nothing stops us from creating jobs in a JobComponentSystem's *OnUpdate()* which do not depend upon the input JobHandle and which are not themselves dependencies of the returned JobHandle&mdash;but doing so generally defeats the purpose of a JobComponentSystem.
 
 If we want to complete a JobComponentSystem's jobs earlier than the system's next update, we can inject a BarrierSystem: before flushing its EntityCommandBuffers in its update, a BarrierSystem completes the job handles returned by any JobComponentSystems which inject the BarrierSystem.
 
