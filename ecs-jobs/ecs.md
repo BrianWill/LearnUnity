@@ -216,7 +216,7 @@ int index = entity.Index;
 int version = entity.Version;
 
 // add a component to an existing entity
-em.AddComponent<MyComponent>(entity, new MyComponent());
+em.AddComponent(entity, typeof(MyComponent));
 
 // get the component of an entity
 MyComponent myComp = em.GetComponentData<MyComponent>(entity);
