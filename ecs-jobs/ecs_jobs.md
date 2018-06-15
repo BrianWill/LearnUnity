@@ -2,8 +2,6 @@
 
 ## using the Job System with ECS
 
-The iterators we get from ComponentGroups (ComponentDataArray, EntityArray, *et al.*) are valid job fields, but jobs touching entity components should only be created in the context of JobComponentSystems (described below).
-
 Like native containers, the entity component iterators have job safety checks:
 
 ```csharp
@@ -25,7 +23,7 @@ Additionally, right before a system *OnUpdate()* is called, an exception is thro
 
 #### JobComponentSystem
 
-A **JobComponentSystem** is like a ComponentSystem but helps us create jobs with appropriate dependencies that avoid entity component access conflicts. Unlike in a normal ComponentSystem, the *OnUpdate()* method receives a job handle and returns a job handle:
+The iterators we get from ComponentGroups (ComponentDataArray, EntityArray, *et al.*) are allowed as fields of jobs, but to avoid conflicting access, jobs touching entity components should only be created in the context of JobComponentSystems. A **JobComponentSystem** is like a ComponentSystem but helps us create jobs with appropriate dependencies that avoid entity component access conflicts. Unlike in a normal ComponentSystem, the *OnUpdate()* method receives a job handle and returns a job handle:
 
 1. Immediately after each JobComponentSystem's *OnUpdate()* returns, *JobHandle.ScheduleBatchedJobs()* is called, thus starting execution of any jobs scheduled in the *OnUpdate()*.
 2. Immediately before *OnUpdate()*, *Complete()* is called on the JobHandle returned by the system's previous *OnUpdate()* call. So a JobComponentSystem is intended for jobs that at most take a frame to complete.
