@@ -6,4 +6,10 @@ Unity version 2018.1 introduces a few major new features for achieving high perf
 
 ECS and the Job System can be used separately, but they are [highly complementary](ecs_jobs.md): ECS guarantees data is layed out linearly in memory, which speeds up job code accessing the data and gives the Burst compiler more optimization opportunities.
 
+### Videos
+
+- [the Job System](https://www.youtube.com/watch?v=zkVYbcSlfoE)
+- [ECS](https://www.youtube.com/watch?v=kk8RCwQHIy4)
+- [using the Job System with ECS](https://www.youtube.com/watch?v=SZGRtQ7-ilo)
+
 [next \>\>](jobs.md)
