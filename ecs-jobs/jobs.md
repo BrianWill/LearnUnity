@@ -101,7 +101,7 @@ JobHandle b = jobB.Schedule();
 JobHandle c = jobC.Schedule();
 
 // Wait for A, B, and C to complete.
-// A, B, and C may complete concurrently and in any order.
+// A, B, and C may run concurrently
 JobHandle.CompleteAll(a, b, c);
 ```
 
