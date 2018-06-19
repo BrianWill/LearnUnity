@@ -72,8 +72,8 @@ job.a = 5.0f;
 job.b = new NativeArray<float>(1, Allocator.TempJob);
 job.b[0] = 3.0f;
 
-JobHandle h = job.Schedule();       // add job to the queue (will not execute yet)
-JobHandle.ScheduleBatchedJobs();    // begin execution of all queued jobs
+JobHandle h = job.Schedule();       // add job to the queue (not readied for execution yet)
+JobHandle.ScheduleBatchedJobs();    // ready all jobs on queue which aren't already ready
 
 
 //...later in the main thread
