@@ -101,7 +101,7 @@ JobHandle b = jobB.Schedule();
 JobHandle c = jobC.Schedule();
 
 // Wait for A, B, and C to complete.
-// A, B, and C may complete in parallel and in any order.
+// A, B, and C may complete concurrently and in any order.
 JobHandle.CompleteAll(a, b, c);
 ```
 
@@ -124,7 +124,7 @@ JobHandle c = jobC.Schedule();
 JobHandle combined = JobHandle.CombineDependencies(a, b, c);
 
 // D will not run until after A, B, and C complete.
-// A, B, and C may run in parallel.
+// A, B, and C may run concurrently.
 JobHandle d = jobD.Schedule(combined);  
 ```
 
@@ -138,7 +138,7 @@ When the main thread calls *Complete()*, any jobs it must wait for that aren't y
 
 #### IJobParallelFor
 
-A ParallelFor job is automatically split behind-the-scenes into multiple actual jobs that can run in parallel, each processing its own range of indexes, *e.g.* one job processes indexes 0 through 99, another processes 100 through 199, another 200 through 299, *etc.*
+A ParallelFor job is automatically split behind-the-scenes into multiple actual jobs that can run concurrently, each processing its own range of indexes, *e.g.* one job processes indexes 0 through 99, another processes 100 through 199, another 200 through 299, *etc.*
 
 ```csharp
 public struct MyParallelJob : IJobParallelFor
@@ -176,13 +176,13 @@ float val2 = job.b[4];        // 9.0f
 job.b.Dispose();
 ```
 
-Above, the job calls *Execute()* 1000 times, with *i* starting at 0 and incrementing for each other call. The calls are batched into logical jobs that each make 64 calls (except for one batch which makes 40 calls, because 1000 divided by 64 has a remainder of 40). These logical jobs don't have their own handles, but they run as their own units of work and so can run in parallel. (The overhead of 1000 calls is avoided by the compiler inlining the *Execute()* call in each batch loop.)
+Above, the job calls *Execute()* 1000 times, with *i* starting at 0 and incrementing for each other call. The calls are batched into logical jobs that each make 64 calls (except for one batch which makes 40 calls, because 1000 divided by 64 has a remainder of 40). These logical jobs don't have their own handles, but they run as their own units of work and so can run concurrently. (The overhead of 1000 calls is avoided by the compiler inlining the *Execute()* call in each batch loop.)
 
 The larger the batch size, the fewer the queued jobs and so the less overhead, but the fewer opportunities for parallel execution. In general, 32 or 64 is a good batch size when each *Execute()* does very little, and 1 is a good batch size when each *Execute()* does a significant chunk of work.
 
 ### safety checks
 
-When one job writes to a native container, we don't want other jobs that might run in parallel to read or write the same container, as this likely would cause race conditions. Given two conflicting jobs, it is our responsibility to ensure that one job will finish running before the other starts, either by calling *Complete()* on one before scheduling the other, or by making one a dependency of the other.
+When one job writes to a native container, we don't want other jobs that might run concurrently to read or write the same container, as this likely would cause race conditions. Given two conflicting jobs, it is our responsibility to ensure that one job will finish running before the other starts, either by calling *Complete()* on one before scheduling the other, or by making one a dependency of the other.
 
 The Job System can't decide for us which of two conflicting jobs should run first because that depends upon the logic of what the jobs do! However, the Job System performs safety checks at runtime in the editor to help us detect conflicting jobs. The safety checks track which scheduled jobs touch which native containers, and an exception is thrown when jobs conflict. Some example scenarios:
 
