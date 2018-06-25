@@ -11,5 +11,6 @@ ECS and the Job System can be used separately, but they are [highly complementar
 - [the Job System](https://www.youtube.com/watch?v=zkVYbcSlfoE)
 - [ECS](https://www.youtube.com/watch?v=kk8RCwQHIy4)
 - [using the Job System with ECS](https://www.youtube.com/watch?v=SZGRtQ7-ilo)
+- [ECS fixed arrays and shared components](https://youtu.be/H8x8WNjEx_o)
 
 [next \>\>](jobs.md)
