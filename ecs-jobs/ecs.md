@@ -100,7 +100,7 @@ The entity manager hashes shared component values to keep track of which chunks 
 
 Unlike regular components, shared components need not be blittable and so can store references into native and managed memory.
 
-Shared components are most appropriate for component types which are mutated infrequently and which have the same values across many entities. For example, a component consisting of a single enum field is a good candidate for a shared component because many entities typically would share the same enum values.
+Shared components are most appropriate for component types which are mutated infrequently and which have the same values across many entities.
 
 ### data modeling guidelines
 
