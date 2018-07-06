@@ -14,4 +14,6 @@ ECS and the Job System can be used separately, but they are [highly complementar
 - [ECS fixed arrays and shared components](https://youtu.be/oO2yqVQwFUQ)
 - [ECS transforms and rendering](https://www.youtube.com/watch?v=QD2DpeuOrS0)
 
+**TIP**: If you find the narration a bit too fast, you can set Youtube video playback to any speed you like in the Javascript console. For example, you can set the playback rate to 92% with `document.getElementsByTagName('video')[0].playbackRate = 0.92`
+
 [next \>\>](jobs.md)
