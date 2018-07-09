@@ -217,7 +217,7 @@ JobHandle b = jobB.Schedule();     // OK
 // assume jobs A and B reference the same NativeContainer
 JobHandle a = jobA.Schedule();
 
-// B will wait for A to complete, so no possible conflict
+// B will wait for A to finish, so no possible conflict
 JobHandle b = jobB.Schedule(a);     // OK
 ```
 
