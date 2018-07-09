@@ -198,7 +198,8 @@ JobHandle a = jobA.Schedule();
 JobHandle.ScheduleBatchedJobs();  
 
 // Even if job A has finished by now, that is just 
-// happenstance of scheduling, so we want an error here.
+// happenstance of scheduling. If we do not Complete() A before
+// scheduling B, we have no guarantee that A finishes before B starts.
 JobHandle b = jobB.Schedule();     // exception!
 ```
 
