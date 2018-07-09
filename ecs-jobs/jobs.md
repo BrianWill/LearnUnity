@@ -6,7 +6,7 @@ Rather than creating our own threads, we can use the Job System, which schedules
 
 1. Creating and managing our own threads is bothersome and error-prone.
 2. Any threads we create wastefully contend with each other and with Unity's own threads for CPU time.
-3. Avoiding and detecting race conditions can be very difficult.
+3. Maintaining thread safety can be very difficult.
 
 Unity creates a thread for every logical core in your system: one core runs the main thread, another runs the graphics thread, and the rest each run a worker thread. Our MonoBehavior, coroutine, and ECS system code all run in the main thread. Unity's own jobs and the jobs we create run in the worker threads (and in some cases on the main thread).
 
