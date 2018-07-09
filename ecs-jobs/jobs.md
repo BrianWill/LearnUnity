@@ -269,7 +269,7 @@ job.x[0] = 5.0f;   // exception! conflict with the container's use in a schedule
 
 h.Complete();       
 
-job.x[0] = 5.0f;   // OK to touch the container after the job's completion
+job.x[0] = 5.0f;   // OK to access the container contents after the job's completion
 ```
 
 [next \>\>](ecs.md)
