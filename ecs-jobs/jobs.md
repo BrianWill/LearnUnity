@@ -247,7 +247,7 @@ JobHandle a = jobA.Schedule();
 JobHandle b = jobB.Schedule();   
 ```
 
-While a job is scheduled, accessing any of its native containers in the main thread triggers an exception:
+While a job is scheduled, accessing the contents of any of its native containers in the main thread triggers an exception:
 
 ```csharp
 public struct MyJob : IJob
