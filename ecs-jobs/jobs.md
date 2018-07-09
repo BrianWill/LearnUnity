@@ -208,7 +208,7 @@ JobHandle b = jobB.Schedule();     // exception!
 JobHandle a = jobA.Schedule();
 a.Complete();  
 
-// job A has Completed(), so no possible conflict with B
+// job A has been completed, so no possible conflict with B
 JobHandle b = jobB.Schedule();     // OK
 ```
 
