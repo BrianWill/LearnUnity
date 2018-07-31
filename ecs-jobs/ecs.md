@@ -18,7 +18,7 @@ A **World** stores an EntityManager instance and a set of system instances. Each
 
 ### pure ECS vs. hybrid ECS
 
-The old Component types offer tons of functionality: rendering, collisions, physics, audio, animations, *etc.* As of yet, the ECS package has only a few stock components and systems for basic rendering. Consequently, making a 'pure' ECS-only game today requires replicating much functionality of the old Components yourself. Eventually, the set of stock ECS components and systems should grow to provide all the functionality of the old GameObjects and their Components. In the meantime, we can use ECS and the old GameObjects/Components together in a 'hybrid' approach. (Just be clear that, the more we involve GameObjects, the more we lose the benefits of linear memory layout.) 
+The old GameObject Component types offer tons of functionality: rendering, collisions, physics, audio, animations, *etc.* As of yet, the ECS package has only a few stock ECS components and systems for basic rendering. Consequently, making a 'pure' ECS-only game today requires replicating much functionality of the old Components yourself. Eventually, the set of stock ECS components and systems should grow to provide all the functionality of the old GameObjects and their Components. In the meantime, we can use ECS and the old GameObjects/Components together in a 'hybrid' approach. (Just be clear that, the more we involve GameObjects, the more we lose the benefits of linear memory layout.) 
 
 Also understand that the ECS editor workflow is very much a work-in-progress. The Entity Debugger window allows us to inspect systems and entities, but we cannot yet construct scenes out of entities without involving GameObjects.
 
