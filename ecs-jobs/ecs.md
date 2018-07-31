@@ -14,7 +14,7 @@ In ECS, an ***entity*** is just a unique ID number, and ***components*** are str
 
 A ***system*** is a class inheriting from **ComponentSystem**, whose methods *OnUpdate()*, *OnCreateManager()*, and *OnDestroyManager()* are called in the system event loop. It's common in a system's *OnUpdate()* to access many hundreds or thousands of entities rather than just one or a few.
 
-A **World** stores an EntityManager instance and a set of system instances. Each EntityManager has its own set of entities, so the entities of one World are separate from any other World, and the systems of a World only access entities of that World. A common reason to have more than one world is to separate simulation from presentation, which is particularly useful for networked games because it separates client-only concerns from server concerns. (In cases where multiple Worlds need the same ComponentSystem, we give each World its own instance; a ComponentSystem used by just one World would be instantiated only once.)
+A **World** stores an EntityManager instance and a set of system instances. Each EntityManager has its own set of entities, so the entities of one World are separate from any other World, and the systems of a World only access entities of that World's EntityManager. A common reason to have more than one world is to separate simulation from presentation, which is particularly useful for networked games because it separates client-only concerns from server concerns. (In cases where multiple Worlds need the same ComponentSystem, we give each World its own instance; a ComponentSystem used by just one World would be instantiated only once.)
 
 ### pure ECS vs. hybrid ECS
 
