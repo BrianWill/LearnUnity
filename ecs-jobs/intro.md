@@ -32,7 +32,7 @@ A scheduled job can be 'completed' on the main thread, meaning the main thread w
 
 A job is passed a struct as input. This struct cannot contain any references, except it can have NativeContainer types (such as NativeArray or NativeHashMap), which have unsafe pointers to native memory. These NativeContainers are manually allocated and so require manual deallocation (by calling the *Dispose()* method).
 
-A job only produces output by mutating the contents of NativeContainer(s) passed in the input struct. (Mutations to the input struct itself are not visible outside the job because the job gets its own private copy of the struct.) A job cannot touch static fields or methods and cannot do I/O. The purpose of a job is always just to produce output data in one or more NativeContainers passed in *via* the input struct.
+A job only produces output by mutating the contents of NativeContainer(s) passed in the input struct. (Mutations to the input struct itself are not visible outside the job because the job gets its own private copy of the struct.) A job cannot touch static fields or methods and cannot do I/O. The purpose of a job is just to produce output data in one or more NativeContainers passed in *via* the input struct. (The exception to this rule is that jobs can read and mutate ECS entities and components, as discussed later.)
 
 ### job dependencies
 
@@ -48,6 +48,14 @@ Completing a job transitively completes all of that job's dependencies as well.
 
 ### safety checks
 
-It's generally a mistake to have two or more jobs concurrently use the same NativeContainer, and so, when executing your game inside the editor, Unity throws exceptions when it detects such cases. When two jobs access the same NativeContainer, one of the jobs should be completed before the other is scheduled, or one job should be the dependency (direct or indirect) of the other. Either of these arrangements guarantees that one job finishes executing before the other starts. (Which of the two jobs should run first is up to you because it depends upon the particular logic!)
+It's generally a mistake to have two or more jobs concurrently use the same NativeContainer, and so, when executing our game inside the editor, Unity throws exceptions when it detects such cases. When two jobs access the same NativeContainer, one of the jobs should be completed before the other is scheduled, or one job should be the dependency (direct or indirect) of the other. Either of these arrangements guarantees that one job finishes executing before the other starts. (Which of the two jobs should run first is up to us because it depends upon the particular logic!)
 
 ## ECS (Entity Component System) overview
+
+An **entity** is a piece of data known by a unique ID number and which logically contains any number of **components** (not to be confused with Unity's GameObject Components). These components are struct types which can only contain other value types (meaning they can't contain memory references!), and a single entity cannot have multiple components of the same type. Components can include references to other entities by storing their unique ID numbers.
+
+A **system** is a class whose *Update()* method is called once every frame in the main thread. By default, the order of system updates within a frame is chosen automatically, but we can specify their relative execution order. A typical system update iterates through a selection of component types for all entities which have components of those types. For example, a system might iterate through all components of types A, C, and D for all entities which have components of those types (regardless of what other types of components those entities might have, *e.g.* an entity with types A, B, C, D, and E would be included). The entities and their components are stored in memory in a linear fashion, making these iterations through the entities and their components as optimal as possible.
+
+### using jobs to read and write entities and their components
+
+We can create and schedule jobs which read and mutate the entities and their components, but doing so requires special consideration to avoid conflicting reads/writes between overlapping jobs. Safety checks catch these conflicts, and a special type of system called JobComponentSystem helps us avoid these conflicts.
