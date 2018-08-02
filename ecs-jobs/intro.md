@@ -24,7 +24,7 @@ A job can only be scheduled (added to the job queue) from the main thread, but a
 
 When a worker thread is available, the job system executes a job waiting on the queue. The execution order of jobs on the queue is left up to the job system and is not necessarily the same as the order the jobs were added to the queue. Once started, a job runs on its thread without interuption until finished.
 
-A scheduled job can be 'completed' on the main thread, meaning that the main thread will wait for the job to finish executing (if it hasn't finished already) and that all references to the job are removed from the job system.
+A scheduled job can be 'completed' on the main thread, meaning that the main thread will wait for the job to finish executing (if it hasn't finished already) and that all references to the job are removed from the job system. All jobs should be completed at some point, but completing jobs immediately after scheduling them generally defeats the purpose of using jobs because the main thread can't do anything while waiting for the job to complete, including scheduling other jobs.
 
 ### job input and output
 
