@@ -28,15 +28,15 @@ When a worker thread is available, the job system executes a job waiting on the 
 
 A scheduled job can be 'completed' on the main thread, meaning the main thread will wait for the job to finish executing (if it hasn't finished already) and all references to the job are removed from the job system.
 
-### input and output from a job
+### job input and output
 
-A job is passed a struct as input. This struct cannot contain any references, except it can have NativeContainer types, such as NativeArray and NativeHashMap, which have unsafe pointers to native memory. These NativeContainers are manually allocated (meaning not garbage collected) and so require manual deallocation.
+A job is passed a struct as input. This struct cannot contain any references, except it can have NativeContainer types (such as NativeArray or NativeHashMap), which have unsafe pointers to native memory. These NativeContainers are manually allocated and so require manual deallocation (by calling the *Dispose()* method).
 
-A job only produces output by mutating the contents of NativeContainer(s) passed in the input struct. (Mutations to the input struct itself are not visible outside the job because the job gets its own private copy of the struct.) A job cannot touch static fields or methods and cannot do I/O. The purpose of a job is always to produce output data in one or more NativeContainers.
+A job only produces output by mutating the contents of NativeContainer(s) passed in the input struct. (Mutations to the input struct itself are not visible outside the job because the job gets its own private copy of the struct.) A job cannot touch static fields or methods and cannot do I/O. The purpose of a job is always just to produce output data in one or more NativeContainers passed in *via* the input struct.
 
 ### job dependencies
 
-When scheduling a job, we can specify another already scheduled job as its dependency. The job system will not start executing a scheduled job until that job's dependency has finished executing. This is useful when two jobs use the same NativeContainer(s) because then we usually need to guarantee that one job finishes using the NativeContainer(s) before the other job starts.
+When scheduling a job, we can specify another already scheduled job as its dependency. The job system will not start executing a scheduled job until that job's dependency has finished executing. This is useful when two jobs use the same NativeContainer(s) because we usually want to guarantee that one job finishes using the NativeContainer(s) before the other job starts.
 
 Effectively, scheduled jobs can form chains of dependency. For example, job A depends upon job B which depends upon job C, such that B will wait for C to finish, and A will wait for B to finish.
 
