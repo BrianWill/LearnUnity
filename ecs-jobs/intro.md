@@ -34,7 +34,7 @@ A job is passed a struct as input. This struct cannot contain any memory referen
 
 A job only produces output by mutating the contents of NativeContainer(s) passed in the input struct. (Mutations to the input struct itself are not visible outside the job because the job gets its own private copy of the struct.) A job cannot touch static fields or methods and cannot do I/O.
 
-The purpose of a job is just to mutate the contents of one or more NativeContainers passed in *via* the input struct. (The exception to this rule is that jobs can also produce output by mutating ECS entities and components, as discussed later.)
+The purpose of a job is always just to mutate the contents of one or more NativeContainers passed in *via* the input struct. (As discussed later, jobs can also mutate ECS entities and components.)
 
 ### job dependencies
 
