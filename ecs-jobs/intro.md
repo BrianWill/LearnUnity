@@ -38,7 +38,7 @@ A job only produces output by mutating the contents of NativeContainer(s) passed
 
 When scheduling a job, we can specify another already scheduled job as its dependency. The job system will not start executing a scheduled job until that job's dependency has finished executing. This is useful when two jobs use the same NativeContainer(s) because we usually want to guarantee that one job finishes using the NativeContainer(s) before the other job starts.
 
-Effectively, scheduled jobs can form chains of dependency. For example, job A depends upon job B which depends upon job C, such that B will wait for C to finish, and A will wait for B to finish.
+Effectively, scheduled jobs can form chains of dependency. For example, job A depends upon job B which depends upon job C, such that A will not start until B has finished, and B will not start until C has finished.
 
 A job can be the direct dependency of multiple other jobs, and a job can have multiple direct dependencies. Consequently, a chain of dependencies can have branches. A job with multiple dependencies will not start executing until all of its dependencies have finished. A job that is the dependency of multiple other jobs must finish before those other jobs can start executing.
 
