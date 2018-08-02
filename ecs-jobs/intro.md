@@ -24,7 +24,7 @@ ECS and the Job System can be used separately, but they are [highly complementar
 
 A job can only be scheduled (added to the job queue) from the main thread, but a job usually executes on one of Unity's background worker threads (though in some cases a job executes on the main thread).
 
-When a worker thread is available, the job system executes a job waiting on the queue. The execution order of jobs on the queue is left up to the job system and not necessarily the same as the order the jobs were added to the queue. Once started, a job runs on its thread without interuption until finished.
+When a worker thread is available, the job system executes a job waiting on the queue. The execution order of jobs on the queue is left up to the job system and is not necessarily the same as the order the jobs were added to the queue. Once started, a job runs on its thread without interuption until finished.
 
 A scheduled job can be 'completed' on the main thread, meaning the main thread will wait for the job to finish executing (if it hasn't finished already) and all references to the job are removed from the job system.
 
