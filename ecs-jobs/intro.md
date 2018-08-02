@@ -16,8 +16,6 @@ ECS and the Job System can be used separately, but they are [highly complementar
 
 **TIP**: If you find the narration a bit too fast, you can set Youtube video playback to any speed you like in the Javascript console. For example, you can set the playback rate to 92% with `document.getElementsByTagName('video')[0].playbackRate = 0.92`
 
-[next \>\>](jobs.md)
-
 ## Job System overview
 
 ### job execution
@@ -65,3 +63,5 @@ We can create and schedule jobs which read and mutate the entities and their com
 ### hybrid ECS
 
 As of yet, Unity provides very few stock component types and systems, so a game that uses only ECS rather than GameObjects will have to implement most pieces of game functionality for itself. For example, there are no ECS components or systems yet for collision detection. Until these missing pieces are filled in over the next few years, most projects using ECS will want to use the old GameObjects as well. Just be clear that the old GameObjects do not have the performance benefits of ECS's linear memory storage and integration into the job system.
+
+[next \>\>](jobs.md)
