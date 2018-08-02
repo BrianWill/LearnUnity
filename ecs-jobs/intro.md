@@ -59,3 +59,7 @@ A **system** is a class whose *Update()* method is called once every frame in th
 ### using jobs to read and write entities and their components
 
 We can create and schedule jobs which read and mutate the entities and their components, but doing so requires special consideration to avoid conflicting reads/writes between overlapping jobs. Safety checks catch these conflicts, and a special type of system called JobComponentSystem helps us avoid these conflicts.
+
+### hybrid ECS
+
+As of yet, Unity provides very few stock component types and systems, so a game that uses only ECS rather than GameObjects will have to implement most pieces of game functionality for itself. For example, there are no ECS components or systems yet for collision detection. Until these missing pieces are filled in over the next few years, most projects using ECS will want to use the old GameObjects as well. Just be clear that the old GameObjects do not have the performance benefits of ECS's linear memory storage and integration into the job system.
