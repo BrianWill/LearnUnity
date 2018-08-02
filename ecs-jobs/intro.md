@@ -40,14 +40,14 @@ When scheduling a job, we can specify another already scheduled job as its depen
 
 Effectively, scheduled jobs can form chains of dependency. For example, job A depends upon job B which depends upon job C, such that B will wait for C to finish, and A will wait for B to finish.
 
-A job can be the direct dependency of multiple other jobs, and a job can have multiple direct dependencies. Consequently, a chain of dependencies can have branches. A job with multiple dependencies will not start execution until all of its dependencies have finished. A job that is the dependency of multiple other jobs must finish before those other jobs can start executing.
+A job can be the direct dependency of multiple other jobs, and a job can have multiple direct dependencies. Consequently, a chain of dependencies can have branches. A job with multiple dependencies will not start executing until all of its dependencies have finished. A job that is the dependency of multiple other jobs must finish before those other jobs can start executing.
 
-Cycles of dependency are not possible because you can only specify already scheduled jobs as dependencies.
+Cycles of dependency are not possible because we can only specify already scheduled jobs as dependencies (and we cannot change the dependencies of an already scheduled job).
 
 Completing a job transitively completes all of that job's dependencies as well. 
 
 ### safety checks
 
-It's generally a mistake to have two or more jobs concurrently use the same NativeContainer, and so, when executing your game inside the editor, Unity throws exceptions when it detects such cases. When two jobs access the same NativeContainer, one of the jobs should be completed before the other is scheduled, or one job should be the dependency (direct or indirect) of the other. Doing either of these things guarantees that one job finishes executing before the other starts. (Which should run first is up to you because it depends upon the particular logic!)
+It's generally a mistake to have two or more jobs concurrently use the same NativeContainer, and so, when executing your game inside the editor, Unity throws exceptions when it detects such cases. When two jobs access the same NativeContainer, one of the jobs should be completed before the other is scheduled, or one job should be the dependency (direct or indirect) of the other. Either of these arrangements guarantees that one job finishes executing before the other starts. (Which of the two jobs should run first is up to you because it depends upon the particular logic!)
 
 ## ECS (Entity Component System) overview
