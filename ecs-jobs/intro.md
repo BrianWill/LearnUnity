@@ -58,7 +58,7 @@ A **system** is a class whose *Update()* method is called once every frame in th
 
 ### using jobs to read and write entities and their components
 
-We can create and schedule jobs which read and mutate the entities and their components, but doing so requires special consideration to avoid conflicting reads/writes between overlapping jobs. Safety checks catch these conflicts, and a special type of system called JobComponentSystem helps us structure our jobs' dependencies to avoid these conflicts.
+We can create and schedule jobs which read and mutate entities and their components, but doing so requires special consideration to avoid conflicting reads/writes between overlapping jobs. Safety checks catch these conflicts, and a special type of system called JobComponentSystem helps us structure our jobs' dependencies to avoid these conflicts.
 
 ### hybrid ECS
 
