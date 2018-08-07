@@ -16,7 +16,7 @@ Once running, a job cannot be interrupted or moved to another thread, and so a j
 
 Unity provides a set of 'native containers': basic data structures implemented as structs pointing into native memory. As this memory is not garbage-collected, it's the programmer's responsibility to deallocate a native container by calling its *Dispose()* method when that native container is no longer needed.
 
-The provided native container types are:
+The provided native container types include:
 
 - NativeArray
 - NativeSlice (logical indices into a NativeArray)
