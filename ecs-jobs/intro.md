@@ -38,7 +38,7 @@ When scheduling a job, we can specify another already scheduled job as its depen
 
 Effectively, scheduled jobs can form chains of dependency. For example, if job A depends upon job B which depends upon job C, then A will not start until B has finished, and B will not start until C has finished.
 
-A job can be the direct dependency of multiple other jobs, and a job can have multiple direct dependencies. Consequently, a chain of dependencies can have branches. A job with multiple dependencies will not start executing until all of its dependencies have finished. A job that is the dependency of multiple other jobs must finish before those other jobs can start executing.
+A job can be the direct dependency of multiple other jobs, and a job can have multiple direct dependencies. Consequently, a chain of dependencies can have branches. A job that is the dependency of multiple other jobs must finish before those other jobs can start executing. A job with multiple dependencies will not start executing until all of its dependencies have finished.
 
 Cycles of dependency are not possible because we can only specify already scheduled jobs as dependencies (and we cannot change the dependencies of an already scheduled job).
 
