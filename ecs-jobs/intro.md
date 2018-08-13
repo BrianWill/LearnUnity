@@ -48,7 +48,7 @@ Completing a job transitively completes all of that job's dependencies as well.
 
 It's generally a mistake to have two or more jobs concurrently use the same NativeContainer, and so, when executing our game inside the editor, Unity throws exceptions when it detects where such cases might arise.
 
-To avoid these exceptions, when two jobs access the same NativeContainer, one of the jobs should be completed before the other is scheduled, or one job should be the dependency (direct or indirect) of the other. Either of these arrangements guarantees that one job finishes executing before the other starts. (Which of the two jobs should run first is up to us because it depends upon the particular logic!)
+To avoid these exceptions, when two jobs access the same NativeContainer, one of the jobs should be completed before the other is scheduled, or one job should be the direct or indirect dependency of the other. Either of these arrangements guarantees that one job finishes executing before the other starts. (Which of the two jobs should run first is up to us because it depends upon the particular logic!)
 
 ## ECS (Entity Component System) overview
 
