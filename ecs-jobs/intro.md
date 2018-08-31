@@ -56,8 +56,6 @@ An **entity** is a piece of data known by a unique ID number and which can logic
 
 A **system** is a class whose *Update()* method is called once every frame in the main thread. By default, the order of system updates within a frame is chosen automatically, but we can specify their relative execution order. A typical system update iterates through a selection of component types for all entities which have components of those types. For example, a system might iterate through all components of types A, C, and D for all entities which have components of those types (regardless of what other types of components those entities might have, *e.g.* an entity with types A, B, C, D, and E would be included). The entities and their components are stored in memory in a linear fashion, making these iterations through the entities and their components as optimal as possible.
 
-### using jobs to read and write entities and their components
-
 We can create and schedule jobs which read and mutate entities and their components, but doing so requires special consideration to avoid conflicting reads/writes between overlapping jobs. Safety checks catch these conflicts, and a special type of system called JobComponentSystem helps us structure our jobs' dependencies to avoid these conflicts.
 
 ### hybrid ECS
