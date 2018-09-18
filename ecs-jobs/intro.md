@@ -56,7 +56,7 @@ An **entity** is a piece of data known by a unique ID number and which can logic
 
 - are struct types
 - can contain other value types
-- cannot contain memory references (even NativeContainers)
+- cannot contain memory references (even pointers to NativeContainers)
 - can reference entities by storing their unique ID numbers
 - should generally be small (on the order of a few tens or hundreds of bytes)
 
