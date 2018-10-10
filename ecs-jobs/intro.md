@@ -42,7 +42,7 @@ A job can be the direct dependency of multiple other jobs, and a job can have mu
 
 Cycles of dependency (such as A depending upon B which depends back on A) are not possible because we can only specify already scheduled jobs as dependencies and because we cannot change the dependencies of an already scheduled job.
 
-Completing a job transitively completes all of that job's dependencies as well. 
+Completing a job will transitively complete all of that job's dependencies as well. 
 
 ### safety checks
 
