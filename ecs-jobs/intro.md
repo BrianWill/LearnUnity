@@ -24,7 +24,7 @@ A job can only be *scheduled* (added to the job queue) from the main thread, but
 
 When a worker thread is available, the job system executes a job waiting on the queue. The execution order of jobs on the queue is left up to the job system and is not necessarily the same as the order the jobs were added to the queue. Once started, a job runs on its thread without interuption until finished.
 
-When we call the *complete()* method on a scheduled job, the main thread will wait for the job to finish executing (though in some cases it may have finished already!), and all references to the job will be removed from the job system. We should complete all jobs at some point after scheduling them, but completing jobs immediately after scheduling them generally defeats the purpose of using jobs (because the main thread can't do anything while waiting for the job to complete, including scheduling other jobs). So usually we schedule jobs early in the frame and complete them at the end of the frame or in a later frame.
+When we call the *complete()* method on a scheduled job, the main thread will wait for the job to finish executing if it hasn't finished already, and all references to the job will be removed from the job system. We should complete all jobs at some point after scheduling them, but completing jobs immediately after scheduling them generally defeats the purpose of using jobs (because the main thread can't do anything while waiting for the job to complete, including scheduling other jobs). So usually we schedule jobs early in the frame and complete them at the end of the frame or in a later frame.
 
 ### job input and output
 
