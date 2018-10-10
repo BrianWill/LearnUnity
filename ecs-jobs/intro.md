@@ -30,7 +30,7 @@ When we call the *complete()* method on a scheduled job, the main thread will wa
 
 A job is passed a struct as input. This struct cannot contain any memory references, except it can have NativeContainer types (such as NativeArray or NativeHashMap), which have unsafe pointers to native memory. A NativeContainer is manually allocated and so should be manual deallocated (by calling their *Dispose()* method) when you no longer need it.
 
-A job only produces output by mutating the contents of NativeContainer(s) passed in the input struct. (Mutations to the input struct itself are not visible outside the job because the job gets its own private copy of the struct.) A job cannot touch static fields or methods and cannot do I/O, so the purpose of a job is always just to mutate the contents of one or more NativeContainers passed in *via* the input struct. (As discussed later, jobs can also mutate ECS entities and components.)
+A job only produces output by mutating the contents of NativeContainer(s) passed in the input struct. (Mutations to the input struct itself are not visible outside the job because the job gets its own private copy of the struct.) A job should not touch static fields or methods and should not do I/O, so the purpose of a job is always just to mutate the contents of one or more NativeContainers passed in *via* the input struct. (As discussed later, jobs can also mutate ECS entities and components.)
 
 ### job dependencies
 
