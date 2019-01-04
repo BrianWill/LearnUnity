@@ -73,6 +73,6 @@ We can create and schedule jobs which read and mutate entities and their compone
 
 ### hybrid ECS
 
-As of yet, Unity provides very few stock component types and systems, so a game that uses only ECS rather than GameObjects will have to implement most pieces of game functionality for itself. For example, there are no ECS components or systems yet for collision detection. Until these missing pieces are filled in over the next few years, most projects using ECS will want to use the old GameObjects as well. Just be clear that the old GameObjects do not have the performance benefits of ECS's linear memory storage, nor do GameObjects have ECS's integration into the Job System.
+As of yet, Unity provides very few stock component types and systems, so a game that uses only ECS rather than GameObjects will have to implement most pieces of game functionality for itself. For example, there are no ECS components or systems yet for collision detection. Until these missing pieces are filled in over the next few years, most projects using ECS will want to use the old GameObjects as well. Just be clear that the old GameObjects do not have the performance benefits of ECS's linear memory storage, nor are GameObjects integrated into the Job System.
 
 [next \>\>](jobs.md)
