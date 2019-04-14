@@ -2,7 +2,7 @@ Unity version 2018.1 introduces a few major new features for achieving high perf
 
 - The **[Job System](jobs.md)** farms units of work called 'jobs' out to threads while helping us maintain thread safety.
 - The **Burst compiler** optimizes code using [SIMD instructions](https://en.wikipedia.org/wiki/SIMD), which is particularly beneficial for math-heavy code. The Burst compiler is not a general-purpose C# compiler: it only works on job code, which is written in a subset of C# called HPC# (High Performance C#).
-- **[ECS (Entity Component System)](ecs.md)** is an architectural pattern in which we lay out data in native (non-garbage collected) memory in the optimal, linear fashion: tightly packed, contiguous, and accessible in sequence. Also, by separating code from data, ECS (arguably) improves code structure over the traditional Object-Oriented approach.
+- **[ECS (Entity Component System)](ecs.md)** is an architectural pattern in which we lay out data in native (non-garbage collected) memory in the optimal, linear fashion: tightly packed, contiguous, and accessible in sequence. By separating code from data, ECS also (arguably) improves code structure over the traditional Object-Oriented approach.
 
 ECS and the Job System can be used separately, but they are [highly complementary](ecs_jobs.md): ECS guarantees data is layed out linearly in memory, which speeds up job code that accesses that data and gives the Burst compiler more optimization opportunities.
 
@@ -24,7 +24,9 @@ A job can only be *scheduled* (added to the job queue) from the main thread, but
 
 When a worker thread is available, the job system executes a job waiting on the queue. The execution order of jobs on the queue is left up to the job system and is not necessarily the same as the order the jobs were added to the queue. Once started, a job runs on its thread without interuption until finished.
 
-When we call the *complete()* method on a scheduled job, the main thread will wait for the job to finish executing if it hasn't finished already, and all references to the job will be removed from the job system. We should complete all jobs at some point after scheduling them, but completing jobs immediately after scheduling them generally defeats the purpose of using jobs (because, while waiting for a job to complete, the main thread can't do anything else, including scheduling other jobs!). So usually we schedule jobs early in the frame and complete them at the end of the frame or in a later frame.
+When we call the *complete()* method on a scheduled job, the main thread will wait for the job to finish executing (if it hasn't finished already), and all references to the job will be removed from the job system. We should complete all jobs at some point after scheduling them. 
+
+Completing a job *immediately* after scheduling it is generally undesirable because the main thread can't do anything else while waiting for a job to complete, including schedule other jobs! So usually we schedule jobs early in the frame and complete them at the end of the frame or in a later frame.
 
 ### job input and output
 
