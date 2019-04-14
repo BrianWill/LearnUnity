@@ -50,7 +50,7 @@ Completing a job will implicitly complete all of its dependencies too.
 
 It's generally a mistake to have two or more jobs concurrently use the same NativeContainer, and so, when executing our game inside the editor, Unity throws exceptions when it detects where such cases might arise. (Because these checks can be costly, they are not enabled when running your game outside the editor.)
 
-When two jobs access the same NativeContainer, we should avoid these exceptions by:
+When two jobs access the same NativeContainer, we should avoid these exceptions by either:
 
 - completing one job before scheduling the other
 - or making one job the direct or indirect dependency of the other
