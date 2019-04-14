@@ -52,8 +52,8 @@ It's generally a mistake to have two or more jobs concurrently use the same Nati
 
 When two jobs access the same NativeContainer, we should avoid these exceptions by:
 
-1. completing one job before scheduling the other
-2. or making one job the direct or indirect dependency of the other
+- completing one job before scheduling the other
+- or making one job the direct or indirect dependency of the other
 
 Either of these arrangements guarantees that one job finishes executing before the other starts. (Which of the two jobs should run first is up to us because the choice depends upon the particular logic of what we're trying to accomplish!)
 
